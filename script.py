@@ -16,7 +16,7 @@ import model
 
 
 #import dataset
-all_files = glob.glob("./csv/*.csv")
+all_files = glob.glob("../csv/*.csv")
 li = [pd.read_csv(filename, index_col=None, header=0) for filename in all_files]
 df = pd.concat(li, axis=0, ignore_index=True)
 cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']

@@ -13,7 +13,7 @@ from sklearn.metrics import accuracy_score
 
 def get_training_df():
     #import dataset
-    all_files = glob.glob("./csv/*.csv")
+    all_files = glob.glob("../csv/*.csv")
     li = [pd.read_csv(filename, index_col=None, header=0) for filename in all_files]
     df = pd.concat(li, axis=0, ignore_index=True)
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
@@ -34,7 +34,7 @@ def get_training_df():
     df['result'] = np.where(df['home_final_score'] > df['away_final_score'], 1, np.where(df['home_final_score'] == df['away_final_score'], 2, 3))
     df['final_total_goals'] = df['home_final_score'] + df['away_final_score']
 
-    train['actual_result'] = np.where(train['home_score'] > train['away_score'], 1, np.where(train['home_score'] == train['away_score'], 2, 3))
+    df['actual_result'] = np.where(df['home_score'] > df['away_score'], 1, np.where(df['home_score'] == df['away_score'], 2, 3))
 
     campionati = df['campionato'].unique()
     df['avg_camp_goals'] = 0
