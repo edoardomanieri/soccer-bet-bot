@@ -12,9 +12,6 @@ from sklearn.metrics import accuracy_score
 import model
 
 
-
-
-
 #import dataset
 all_files = glob.glob("../csv/*.csv")
 li = [pd.read_csv(filename, index_col=None, header=0) for filename in all_files]
@@ -28,10 +25,10 @@ for col in df.columns:
         df[col] = pd.to_numeric(df[col])
 
 #nan imputation
-nan_cols = [i for i in df.columns if df[i].isnull().any()]
+nan_cols = [i for i in df.columns if df[i].isnull().any() if i not in ['home_final_score', 'away_final_score']]
 for col in nan_cols:
     df = model.nan_imputation(df[(~df['home_' + col[5:]].isnull()) & (~df['away_' + col[5:]].isnull())], df,col)
-
+df.dropna(inplace = True)
 
 #dropna
 # nan_col = ['home_rimesse_laterali', 'away_rimesse_laterali', 'home_tiri_fermati', 'away_tiri_fermati',\

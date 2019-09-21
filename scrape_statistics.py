@@ -497,10 +497,6 @@ def get_input_stream(previuos_len):
 #     line = f.readline()
 #     columns = [col.replace("\n", "").replace(" ", "")
 #             for col in line.split(',')]
-
-
-
-
 # campionati = {}
 # with open("./teams.csv", "r") as f:
 #     champs = f.readlines()
@@ -510,7 +506,7 @@ def get_input_stream(previuos_len):
 #             "\n", "") for team in line[1:] if team.replace("\n", "") != ""]
 #         campionati[line[0].replace(" ", "")] = team_list
     
-# get_ended_matches(13, campionati, columns)
+# get_ended_matches(22, campionati, columns)
 # filter_matches(12, columns)
 
 
