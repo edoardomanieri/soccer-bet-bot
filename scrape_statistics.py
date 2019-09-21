@@ -27,7 +27,7 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
 
     d = date.today().strftime("%d/%m/%Y")
 
-    geckodriver_path = "/home/edoardo/Desktop/Betting_live/geckodriver"
+    geckodriver_path = "./geckodriver"
 
     options = webdriver.FirefoxOptions()
     options.add_argument('-headless')
@@ -37,7 +37,7 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
     driver = webdriver.Firefox(
         executable_path=geckodriver_path, firefox_profile=fire, options=options)
     url = "https://www.diretta.it"
-    f = open("/home/edoardo/Desktop/Betting_live/csv/stats" + str(day) + ".csv", "a")
+    f = open("../csv/stats" + str(day) + ".csv", "a")
     try:
         driver.get(url)
         content_initial_page = driver.page_source
@@ -114,7 +114,7 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
                     print("On match : {}-{}".format(teamA, teamB))
                     trial += 1
                     if trial == 5:
-                        with open("/home/edoardo/Desktop/Betting_live/discard", "a") as f3:
+                        with open("./discard", "a") as f3:
                             f3.write(teamA + "\n" + teamB + "\n")
                         raise
             
@@ -177,7 +177,7 @@ def get_match_statistics_for_predictions(day, columns, campionati, possesso_pall
 
     d = date.today().strftime("%d/%m/%Y")
 
-    geckodriver_path = "/home/edoardo/Desktop/Betting_live/geckodriver"
+    geckodriver_path = "./geckodriver"
 
     options = webdriver.FirefoxOptions()
     options.add_argument('-headless')
@@ -187,7 +187,7 @@ def get_match_statistics_for_predictions(day, columns, campionati, possesso_pall
     driver = webdriver.Firefox(
         executable_path=geckodriver_path, firefox_profile=fire, options=options)
     url = "https://www.diretta.it"
-    f = open("/home/edoardo/Desktop/Betting_live/predictions.csv", "a")
+    f = open("./predictions.csv", "a")
     try:
         driver.get(url)
         content_initial_page = driver.page_source
@@ -264,7 +264,7 @@ def get_match_statistics_for_predictions(day, columns, campionati, possesso_pall
                     print("On match : {}-{}".format(teamA, teamB))
                     trial += 1
                     if trial == 5:
-                        with open("/home/edoardo/Desktop/Betting_live/discard", "a") as f3:
+                        with open("./discard", "a") as f3:
                             f3.write(teamA + "\n" + teamB + "\n")
                         raise
             
@@ -325,7 +325,7 @@ def get_match_statistics_for_predictions(day, columns, campionati, possesso_pall
 
 def get_ended_matches(day, campionati, columns):
     try:
-        geckodriver_path = "/home/edoardo/Desktop/Betting_live/geckodriver"
+        geckodriver_path = "./geckodriver"
         options = webdriver.FirefoxOptions()
         options.add_argument('-headless')
         fire = webdriver.FirefoxProfile()
@@ -402,10 +402,10 @@ def get_ended_matches(day, campionati, columns):
                     scoreA = scores[0].get_text()
                     scoreB = scores[1].get_text()
                     
-                    with open("/home/edoardo/Desktop/Betting_live/csv/stats" + str(day) + ".csv", "r") as f:
+                    with open("../csv/stats" + str(day) + ".csv", "r") as f:
                         lines = f.readlines()
                     
-                    with open("/home/edoardo/Desktop/Betting_live/csv/stats" + str(day) + ".csv", "w") as f:
+                    with open("../csv/stats" + str(day) + ".csv", "w") as f:
                         for line in lines:
                             if teamA in line and teamB in line:
                                 print("writing final score of: {}-{}".format(teamA, teamB))
@@ -422,9 +422,9 @@ def get_ended_matches(day, campionati, columns):
     
 
 def filter_matches(day, columns):
-    with open("/home/edoardo/Desktop/Betting_live/csv/stats" + str(day) + ".csv", "r") as f:
+    with open("../csv/stats" + str(day) + ".csv", "r") as f:
         lines = f.readlines()
-    with open("/home/edoardo/Desktop/Betting_live/csv/stats" + str(day) + "final.csv", "w") as f:
+    with open("../csv/stats" + str(day) + "final.csv", "w") as f:
         for line in lines:
             l = len([i for i in line.split(',') if i != ""])
             if l == (len(columns) - 2) or l == len(columns):
@@ -432,7 +432,7 @@ def filter_matches(day, columns):
 
 
 def scrape_teams(campionato):
-    geckodriver_path = "/home/edoardo/Desktop/Betting_live/geckodriver"
+    geckodriver_path = "./geckodriver"
     fire = webdriver.FirefoxProfile()
     fire.set_preference("http.response.timeout", 3)
     fire.set_preference("dom.max_script_run_time", 3)
@@ -445,7 +445,7 @@ def scrape_teams(campionato):
 
     matches = soup.find_all("div", class_="leagueTable__teams")
 
-    f = open("/home/edoardo/Desktop/Betting_live/teams.csv", "a")
+    f = open("./teams.csv", "a")
     for match in matches:
         teamA = match.find(
             "a", class_="leagueTable__team").get_text().lower()
@@ -485,7 +485,7 @@ def get_input_stream(previuos_len):
 #scrape_teams("calcio/europa/europei")
 # crontab -e */5 15-22 * 1-5,9-12 6,7 /home/script.sh
 
-# 24 17 30 * * /home/edoardo/Desktop/Betting_live/run_scrape.sh
+# 24 17 30 * * ./run_scrape.sh
 
 # 0 19 * 1-5,9-12 1-5
 # 0 19 * 1-5,9-12 1-5
@@ -493,7 +493,7 @@ def get_input_stream(previuos_len):
 # 0 14 * 1-5,9-12 6,7
 # test
 
-# with open("/home/edoardo/Desktop/Betting_live/csv/stats1.csv", "r") as f:
+# with open("../csv/stats1.csv", "r") as f:
 #     line = f.readline()
 #     columns = [col.replace("\n", "").replace(" ", "")
 #             for col in line.split(',')]
@@ -502,7 +502,7 @@ def get_input_stream(previuos_len):
 
 
 # campionati = {}
-# with open("/home/edoardo/Desktop/Betting_live/teams.csv", "r") as f:
+# with open("./teams.csv", "r") as f:
 #     champs = f.readlines()
 #     for champ in champs:
 #         line = champ.split(",")
@@ -514,7 +514,7 @@ def get_input_stream(previuos_len):
 # filter_matches(12, columns)
 
 
-        # geckodriver_path = "/home/edoardo/Desktop/Betting_live/geckodriver"
+        # geckodriver_path = "./geckodriver"
         # options = webdriver.FirefoxOptions()
         # options.add_argument('-headless')
         # fire = webdriver.FirefoxProfile()

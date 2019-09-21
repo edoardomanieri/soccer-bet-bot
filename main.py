@@ -29,18 +29,18 @@ if __name__ == "__main__":
 
     predictions = False
 
-    files = glob.glob("/home/edoardo/Desktop/Betting_live/csv/stats*")
+    files = glob.glob("../csv/stats*")
     day = len(files) + 1
     
-    with open("/home/edoardo/Desktop/Betting_live/csv/stats1.csv", "r") as f:
+    with open("../csv/stats1.csv", "r") as f:
         line = f.readline()
         columns = [col.replace("\n", "").replace(" ", "")
                    for col in line.split(',')]
-    with open("/home/edoardo/Desktop/Betting_live/csv/stats" + str(day) + ".csv", "w+") as f:
+    with open("../csv/stats" + str(day) + ".csv", "w+") as f:
         f.write(line)
 
     campionati = {}
-    with open("/home/edoardo/Desktop/Betting_live/teams.csv", "r") as f:
+    with open("./teams.csv", "r") as f:
         champs = f.readlines()
         for champ in champs:
             line = champ.split(",")
@@ -54,18 +54,18 @@ if __name__ == "__main__":
 
     print(os.getpid())
     
-    with open("/home/edoardo/Desktop/Betting_live/kill_process.sh", "w") as f:
+    with open("./kill_process.sh", "w") as f:
         f.write("#!/bin/bash\nkill -15 {}".format(os.getpid()))
 
     signal.signal(signal.SIGTERM, partial( 
         ss.signal_handler, day, campionati, columns))
 
-    with open("/home/edoardo/Desktop/Betting_live/discard", "w") as f:
+    with open("./discard", "w") as f:
         f.write("")
     previous_len = 0
     while True:
         try:
-            with open("/home/edoardo/Desktop/Betting_live/discard", "r") as f1:
+            with open("./discard", "r") as f1:
                 discard_list = [line.replace("\n", "").strip() for line in f1.readlines()]
             if predictions:
                 while i < 5:
