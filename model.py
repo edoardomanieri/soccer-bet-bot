@@ -14,7 +14,7 @@ import joblib
 def get_training_df():
     #import dataset
     all_files = glob.glob("../csv/*.csv")
-    li = [pd.read_csv(filename, index_col=None, header=0) for filename in all_files]
+    li = [pd.read_csv(filename, index_col=None, header=0) for filename in all_files[:-1]]
     df = pd.concat(li, axis=0, ignore_index=True)
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
 
@@ -40,6 +40,7 @@ def get_training_df():
     df['final_total_goals'] = df['home_final_score'] + df['away_final_score']
 
     df['actual_result'] = np.where(df['home_score'] > df['away_score'], 1, np.where(df['home_score'] == df['away_score'], 2, 3))
+    df['result_strongness'] = (df['home_score'] - df['away_score']) * df['minute']
 
     campionati = df['campionato'].unique()
     df['avg_camp_goals'] = 0
@@ -76,33 +77,39 @@ def get_training_df():
         df.loc[df['home'] == team,'home_avg_goal_subiti'] = (sum_home_subiti + sum_away_subiti) / (n_match_home + n_match_away)
         df.loc[df['away'] == team,'away_avg_goal_subiti'] = (sum_home_subiti + sum_away_subiti) / (n_match_home + n_match_away)
 
-    df.drop(columns = cat_col, inplace = True)
+    
 
     #tmp_y_col_to_be_dropped = ['home_avg_goal_fatti', 'away_avg_goal_fatti', 'home_avg_goal_subiti', 'away_avg_goal_subiti', 'avg_camp_goals']
-    # train_X = train_X.drop(columns = tmp_y_col_to_be_dropped)
-    return df
+    #train_X = train_X.drop(columns = tmp_y_col_to_be_dropped)
+    return df.reset_index(drop = True)
 
-def get_model():
-    return joblib.load("./models/current.joblib")
+
 
 
 #drop_y_column = ['home_final_score', 'away_final_score', 'result', 'final_total_goals']
-def train_and_save_model(train, cols_to_be_dropped):
+def train_and_save_model(train):
     """
     Create model and save it with joblib
     """
+    cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
+    outcome_cols = ['home_final_score', 'away_final_score', 'final_total_goals']
     train_y = train['result'].values
-    train_X = train.drop(columns = cols_to_be_dropped)
+    train_X = train.drop(columns = ['result'] + cat_col + outcome_cols)
 
     xgb = XGBClassifier(n_estimators = 2000)
     xgb.fit(train_X, train_y)
     joblib.dump(xgb, "./models/current.joblib")
 
 
+def get_model():
+    return joblib.load("./models/current.joblib")
+
+
 def get_predict_proba(model, input_df):
-    input_X = input_df.values
-    predictions = model.predict(input_X)
-    probabilities = model.predict_proba(input_X)
+
+    cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
+    predictions = model.predict(input_df.drop(columns = cat_col))
+    probabilities = model.predict_proba(input_df.drop(columns = cat_col))
     return predictions, probabilities
 
 
@@ -125,7 +132,7 @@ def get_complete_predictions_table(input_df,predictions,probabilities,threshold 
     prob_mask = input_df['probability'] >= threshold
     final_df = input_df.loc[prob_mask, ['home', 'away', 'minute', 'home_score',\
          'away_score', 'probability','predictions']]\
-             .sort_values(by = 'probability', ascending = False, inplace = False)
+             .sort_values(by = ['probability', 'minute'], ascending = False, inplace = False)
     return final_df
 
 
@@ -170,12 +177,16 @@ def process_test_data(training_df, test_df):
 
 
 def process_input_data(input_df, training_df):
+
+    if 'home_final_score' in input_df.columns and 'away_final_score' in input_df.columns:
+        input_df.drop(columns = ['home_final_score', 'away_final_score'], inplace = True)
+
     #introduce target variables
-    input_df['avg_camp_goals'] = 0
     campionati = input_df['campionato'].unique()
     
     input_df['actual_result'] = np.where(input_df['home_score'] > input_df['away_score'], 1, np.where(input_df['home_score'] == input_df['away_score'], 2, 3))
     input_df['result_strongness'] = (input_df['home_score'] - input_df['away_score']) * input_df['minute']
+    input_df['avg_camp_goals'] = 0
 
     for camp in campionati:
         if camp not in training_df['campionato'].unique():
@@ -202,8 +213,6 @@ def process_input_data(input_df, training_df):
             input_df.loc[input_df['home'] == team,'home_avg_goal_subiti'] = training_df.loc[training_df['home'] == team,:].reset_index()['home_avg_goal_subiti'][0]
             input_df.loc[input_df['away'] == team,'away_avg_goal_subiti'] = training_df.loc[training_df['away'] == team,:].reset_index()['away_avg_goal_subiti'][0]
 
-    cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
-    input_df.drop(columns = cat_col, inplace = True)
 
     nan_cols = [i for i in input_df.columns if input_df[i].isnull().any()]
     for col in nan_cols:
@@ -237,5 +246,37 @@ def nan_imputation(train_df, test_df, col):
     return test_df
 
 
+def get_input_data():
+    all_files = glob.glob("../csv/*.csv")
+    input_df = pd.read_csv(all_files[-1], index_col=None, header=0)
+    return input_df.sort_values(by = ['id_partita', 'minute'], ascending = [True, False]).groupby(['id_partita']).first().reset_index() 
+
+
 def real_time_output(retrain_model = False):
-    train = get_training_df()
+    
+    input_df = get_input_data()
+    train_df = get_training_df()
+    input_df = process_input_data(input_df, train_df)
+
+    if retrain_model:
+        train_and_save_model(train_df)
+
+    model = get_model()
+    predictions, probabilities = get_predict_proba(model, input_df)
+    predictions_df = get_complete_predictions_table(input_df, predictions, probabilities, threshold = 0.6)
+    return predictions_df
+
+
+real_time_output(False)
+
+# all_files = glob.glob("../csv/*.csv")
+# input_df = pd.read_csv(all_files[-1], index_col=None, header=0)
+# input_df.drop(columns = ['home_final_score', 'away_final_score'], inplace = True)
+# input_df
+# train_df = get_training_df()
+# input_data = process_input_data(input_df, train_df)
+# train_df.reset_index().T
+# input_data.head().T
+
+# input_data.isnull().sum()
+

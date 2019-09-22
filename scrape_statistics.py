@@ -506,8 +506,8 @@ def get_input_stream(previuos_len):
 #             "\n", "") for team in line[1:] if team.replace("\n", "") != ""]
 #         campionati[line[0].replace(" ", "")] = team_list
     
-# get_ended_matches(22, campionati, columns)
-# filter_matches(12, columns)
+# get_ended_matches(25, campionati, columns)
+#filter_matches(25, columns)
 
 
         # geckodriver_path = "./geckodriver"
