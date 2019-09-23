@@ -1,11 +1,16 @@
 import model_result
 import model_goals
 
-def real_time_output(retrain_result_model = False, retrain_goals_model = False):
+def real_time_output(reprocess_train_result_data = False, reprocess_train_goals_data = False,retrain_result_model = False, retrain_goals_model = False):
     
     ##########result###########
     input_result_df = model_result.get_input_data()
-    train_result_df = model_result.get_training_df()
+
+    if reprocess_train_result_data:
+        train_result_df = model_result.get_training_df()
+    else:
+        train_result_df = pd.read_csv("../dfs/training_result.csv", header = 0)
+
     input_result_df = model_result.process_input_data(input_result_df, train_result_df)
 
     if retrain_result_model:
@@ -19,7 +24,12 @@ def real_time_output(retrain_result_model = False, retrain_goals_model = False):
     ########goals############
 
     input_goals_df = model_goals.get_input_data()
-    train_goals_df = model_goals.get_training_df()
+
+    if reprocess_train_goals_data:
+        train_goals_df = model_goals.get_training_df()
+    else:
+        train_goals_df = pd.read_csv("../dfs/training_goals.csv", header = 0)
+
     input_goals_df = model_goals.process_input_data(input_goals_df, train_goals_df)
 
     if retrain_goals_model:
@@ -34,7 +44,10 @@ def real_time_output(retrain_result_model = False, retrain_goals_model = False):
     final_df = predictions_result_df.merge(predictions_goals_df.loc[:, ["id_partita","minute", "predictions"]], on = ['id_partita', 'minute'])
     final_df.rename(columns = {'predictions_x': 'predictions_result', 'predictions_y': 'predictions_goals'}, inplace = True)
 
+    final_df.loc[final_df['predictions_result'] == 2,'predictions_result'] = 'X'
+    final_df.loc[final_df['predictions_result'] == 3,'predictions_result'] = 2
+
     return final_df
 
 
-real_time_output(False, False)
+real_time_output(False,False,False,False)

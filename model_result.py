@@ -112,8 +112,7 @@ def get_training_df():
         df.loc[df['home'] == team,'home_avg_goal_subiti'] = (sum_home_subiti + sum_away_subiti) / (n_match_home + n_match_away)
         df.loc[df['away'] == team,'away_avg_goal_subiti'] = (sum_home_subiti + sum_away_subiti) / (n_match_home + n_match_away)
 
-    #tmp_y_col_to_be_dropped = ['home_avg_goal_fatti', 'away_avg_goal_fatti', 'home_avg_goal_subiti', 'away_avg_goal_subiti', 'avg_camp_goals']
-    #train_X = train_X.drop(columns = tmp_y_col_to_be_dropped)
+    df.reset_index(drop = True).to_csv("../dfs/training_result.csv")
     return df.reset_index(drop = True)
 
 
