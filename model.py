@@ -24,10 +24,7 @@ def get_training_df():
             df[col] = pd.to_numeric(df[col])
 
     #nan imputation
-    nan_cols = [i for i in df.columns if df[i].isnull().any() if i not in ['home_final_score', 'away_final_score']]
-    for col in nan_cols:
-        df = nan_imputation(df[(~df['home_' + col[5:]].isnull()) & (~df['away_' + col[5:]].isnull())], df,col)
-    df.dropna(inplace = True)
+    df = nan_imputation(df,df)
 
     # #dropna
     # nan_col = ['home_rimesse_laterali', 'away_rimesse_laterali', 'home_tiri_fermati', 'away_tiri_fermati',\
@@ -214,35 +211,44 @@ def process_input_data(input_df, training_df):
             input_df.loc[input_df['away'] == team,'away_avg_goal_subiti'] = training_df.loc[training_df['away'] == team,:].reset_index()['away_avg_goal_subiti'][0]
 
 
-    nan_cols = [i for i in input_df.columns if input_df[i].isnull().any()]
-    for col in nan_cols:
-        input_df = nan_imputation(training_df, input_df,col)
+    input_df = nan_imputation(training_df, input_df)
     
     return input_df
 
 
-def nan_imputation(train_df, test_df, col):
+def nan_imputation(train_df, test_df, thresh = 'half'):
 
-    if 'away' in col:
-        return test_df
+    #eliminate rows with a lot of nans
+    if thresh == 'half':
+        thresh = len(test_df.columns) // 2
+    test_df.dropna(axis = 0, thresh = thresh, inplace = True)
 
-    col = col[5:]
+    #imputing the other nans
+    nan_cols = [i for i in test_df.columns if test_df[i].isnull().any() if i not in ['home_final_score', 'away_final_score']]
+    for col in nan_cols:
 
-    nan_mask = test_df['home_' + col].isnull() | test_df['away_' + col].isnull()
+        col_df = train_df[(~train_df['home_' + col[5:]].isnull()) & (~train_df['away_' + col[5:]].isnull())]
+    
+        if 'away' in col:
+            continue
 
-    if "possesso_palla" in col:
-        test_df.loc[nan_mask, 'home_possesso_palla'] = 50
-        test_df.loc[nan_mask, 'away_possesso_palla'] = 50
-        return test_df
+        col = col[5:]
+        nan_mask = test_df['home_' + col].isnull() | test_df['away_' + col].isnull()
 
-    for m in np.arange(5, 90, 5):
-        mask_min_test = test_df['minute'] >= m
-        mask_max_test = test_df['minute'] <= m + 5
-        mask_min_train = train_df['minute'] >= m
-        mask_max_train = train_df['minute'] <= m + 5
-        test_df.loc[(mask_min_test) & (mask_max_test) & (nan_mask), 'home_' + col] = train_df.loc[mask_min_train & mask_max_train, ['home_' + col, 'away_' + col]].mean().mean()
-        test_df.loc[(mask_min_test) & (mask_max_test) & (nan_mask), 'away_' + col] = train_df.loc[mask_min_train & mask_max_train, ['home_' + col, 'away_' + col]].mean().mean()
+        if "possesso_palla" in col:
+            test_df.loc[nan_mask, 'home_possesso_palla'] = 50
+            test_df.loc[nan_mask, 'away_possesso_palla'] = 50
+            continue
 
+        for m in np.arange(5, 90, 5):
+            mask_min_test = test_df['minute'] >= m
+            mask_max_test = test_df['minute'] <= m + 5
+            mask_min_train = col_df['minute'] >= m
+            mask_max_train = col_df['minute'] <= m + 5
+            test_df.loc[(mask_min_test) & (mask_max_test) & (nan_mask), 'home_' + col] = col_df.loc[mask_min_train & mask_max_train, ['home_' + col, 'away_' + col]].mean().mean()
+            test_df.loc[(mask_min_test) & (mask_max_test) & (nan_mask), 'away_' + col] = col_df.loc[mask_min_train & mask_max_train, ['home_' + col, 'away_' + col]].mean().mean()
+    
+    test_df.dropna(inplace = True)
     return test_df
 
 
