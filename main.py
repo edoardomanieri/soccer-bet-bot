@@ -80,7 +80,9 @@ if __name__ == "__main__":
             else:
                 print("getting matches statistics, don't stop the process...")
                 ss.get_match_statistics(day, columns, campionati, i, discard_list)
+                #print(model.real_time_output(retrain_model = True))
                 print("Now you can safely stop the process...")
+                
                 time.sleep(300)
         except KeyboardInterrupt:
             print("getting final scores....")
