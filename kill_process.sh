@@ -1,2 +1,2 @@
 #!/bin/bash
-kill -15 4492
+kill -15 823

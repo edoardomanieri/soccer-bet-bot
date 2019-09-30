@@ -20,7 +20,7 @@ import signal
 from functools import partial
 import calendar
 import locale
-import model
+import model_result as model
 import joblib
 
 def get_match_statistics(day, columns, campionati, possesso_palla_index, discard_list):
@@ -162,7 +162,9 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
             
                 f.write("," + home + "," + away)
                 current_index += 2
-
+            
+            odds = get_odds(url, driver, match)
+            f.write(",{},{},{},{},{}".format(odds[0],odds[1],odds[2],odds[3],odds[4]))
             f.write("\n")
 
     except Exception:
@@ -173,154 +175,6 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
     driver.close()
 
 
-def get_match_statistics_for_predictions(day, columns, campionati, possesso_palla_index, discard_list):
-
-    d = date.today().strftime("%d/%m/%Y")
-
-    geckodriver_path = "./geckodriver"
-
-    options = webdriver.FirefoxOptions()
-    options.add_argument('-headless')
-    fire = webdriver.FirefoxProfile()
-    fire.set_preference("http.response.timeout", 3)
-    fire.set_preference("dom.max_script_run_time", 3)
-    driver = webdriver.Firefox(
-        executable_path=geckodriver_path, firefox_profile=fire, options=options)
-    url = "https://www.diretta.it"
-    f = open("./predictions.csv", "a")
-    try:
-        driver.get(url)
-        content_initial_page = driver.page_source
-        soup_initial_page = BeautifulSoup(content_initial_page, "lxml")
-        matches = soup_initial_page.find_all("div", class_="event__match event__match--live event__match--oneLine") + \
-            soup_initial_page.find_all(
-                "div", class_="event__match event__match--live event__match--last event__match--oneLine")
-        
-        for match in matches:
-            teamA = match.find(
-                "div", class_="event__participant event__participant--home").get_text().lower()
-            teamB = match.find(
-                "div", class_="event__participant event__participant--away").get_text().lower()
-
-            if (teamA not in [item for sublist in campionati.values() for item in sublist]) and (teamB not in [item for sublist in campionati.values() for item in sublist]):
-                continue
-
-            if teamA in discard_list or teamB in discard_list:
-                continue
-
-            t = match.find(
-                "div", class_="event__stage").get_text().lower().strip()
-            t = t.replace("'", "")
-
-            try:
-                int(t)
-            except ValueError:
-                continue
-
-            if int(t) in [0, 1, 2, 3, 4]:
-                continue
-
-            print("Accepted: {}-{}".format(teamA, teamB))
-            href = match['id']
-            f.write(d + "," + href[4:] + "," + t +
-                    "," + teamA + "," + teamB + ",")
-
-            found = False
-            for key, value in campionati.items():
-                if teamA in value or teamB in value:
-                    f.write(key + ",")
-                    found = True
-                    break
-
-            if not found:
-                f.write("other,")
-            
-            documentNull = True
-            trial = 0
-            while documentNull:
-                try:
-                    newurl = url + "/partita/" + href[4:] + "/#statistiche-partite;0"
-                    driver.get(newurl)
-                    
-                    j = 1
-                    while driver.current_url != newurl and j != 5:
-                        #print("old url...trying to reload on match: {}-{}, trial:{}".format(teamA, teamB, j))
-                        driver.get(newurl)
-                        time.sleep(1)
-                        j += 1
-                    
-                    if j == 5:
-                        print("didn't get the statistics of: {}-{}".format(teamA, teamB))
-
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CLASS_NAME, "statBox")))
-
-                    content_statistic_page = driver.page_source
-                    soup_statistic_page = BeautifulSoup(content_statistic_page, "lxml")
-                    documentNull = False
-
-                except WebDriverException:
-                    print(traceback.format_exc())
-                    print("On match : {}-{}".format(teamA, teamB))
-                    trial += 1
-                    if trial == 5:
-                        with open("./discard", "a") as f3:
-                            f3.write(teamA + "\n" + teamB + "\n")
-                        raise
-            
-
-            scores = match.find(
-                    "div", class_="event__scores fontBold").find_all("span")
-            if scores != None:
-                score_team_A = scores[0].get_text()
-                score_team_B = scores[1].get_text()
-
-            else:
-                scores = soup_statistic_page.find("div", class_="match-info")
-                score_team_A = scores.find_all(
-                    "span", class_="scoreboard")[0].get_text()
-                score_team_B = scores.find_all(
-                    "span", class_="scoreboard")[1].get_text()
-
-            f.write(score_team_A + "," + score_team_B)
-
-            statistics = soup_statistic_page.find("div", class_="statBox").find(
-                "div", class_="statContent").find_all("div", class_="statRow")
-
-            current_index = possesso_palla_index
-            for stat in statistics:
-                home = stat.find(
-                    "div", class_="statText statText--homeValue").get_text()
-                name = stat.find("div", class_="statText statText--titleValue").get_text(
-                ).lower().strip().replace(" ", "_").replace("'", "_")
-                away = stat.find(
-                    "div", class_="statText statText--awayValue").get_text()
-
-                if name == "possesso_palla":
-                    home = home[:-1]
-                    away = away[:-1]
-
-                while name not in columns[current_index]:
-
-                    if "cartellini_rossi" in columns[current_index] or "cartellini_gialli" in columns[current_index]:
-                        f.write(',0,0')
-                        current_index += 2
-                        continue
-                    
-                    f.write(",nan")
-                    current_index += 1
-            
-                f.write("," + home + "," + away)
-                current_index += 2
-
-            f.write("\n")
-
-    except Exception:
-        f.write("\n")
-        print(traceback.format_exc())
-
-    f.close()
-    driver.close()
 
 
 def get_ended_matches(day, campionati, columns):
@@ -419,6 +273,8 @@ def get_ended_matches(day, campionati, columns):
         print(traceback.format_exc())
         driver.close()
 
+
+
     
 
 def filter_matches(day, columns):
@@ -465,22 +321,71 @@ def signal_handler(day, campionati, columns, signalNumber, frame):
     os.kill(os.getpid(), signal.SIGKILL)
 
 
-def get_input_stream(previuos_len):
-    f = open("./predictions.csv", "r")
-    df = pd.read_csv(f, header = 0)
-    f.close()
-    df = df[previuos_len:]
-    previuos_len += len(df)
-    df = model.process_input_data(df)
-    model_ = joblib.load("model")
-    model_.predict(df.values)
 
-    return len(df)
+def get_odds(url, driver, match):
+    try:
+        href = match['id']
+        newurl = url + "/partita/" + href[4:] + "/#comparazione-quote;quote-1x2;finale"
+        j = 0
+        while driver.current_url != newurl and j != 5:
+            driver.get(newurl)
+            time.sleep(1)
+            j += 1
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "bookmaker")))
+        content_odds_page = driver.page_source
+        soup_odds_page = BeautifulSoup(content_odds_page, "lxml")
+        odds = soup_odds_page.find_all("td", class_="kx")
+        odds_res = [odds[i].get_text() for i in range(3)]
+    except Exception:
+        odds_res = [0,0,0]
+        print("not captured odds result")
+    try:
+        newurl = url + "/partita/" + href[4:] + "/#comparazione-quote;over-under;finale"
+        j = 0
+        while driver.current_url != newurl and j != 5:
+            driver.get(newurl)
+            time.sleep(1)
+            j += 1
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "bookmaker")))
+        content_odds_page = driver.page_source
+        soup_odds_page = BeautifulSoup(content_odds_page, "lxml")
+        odds = soup_odds_page.find("table", id="odds_ou_2.5").find_all("td", class_="kx")
+        odds_goals = [odds[i].get_text() for i in range(2)]
 
-    #predict with current model
+        return odds_res + odds_goals
+    except Exception:
+        print("not captured odds goals")
+        return odds_res + [0,0]
 
 
+# def adapt_files(day):
+#     with open("/home/edoardo/Desktop/csv/stats1.csv", "r") as f:
+#         header = f.readline()
+#     with open("/home/edoardo/Desktop/csv/stats" + str(day) + ".csv", "r") as f:
+#         lines = f.readlines()
+#     with open("/home/edoardo/Desktop/csv/stats" + str(day) + ".csv", "w") as f:
+#         f.write(header)
+#         for line in lines[1:]:
+#             elements = line.strip('\n').split(',')
+#             for el in elements[:-2]:
+#                 f.write(el + ',')
+#             f.write('0,0,0,0,0,')
+#             f.write(elements[-2] + ',' + elements[-1] + '\n')
 
+
+# for i in range(2,32):
+#     adapt_files(i)
+#adapt_files(2)
+# geckodriver_path = "./geckodriver"
+# options = webdriver.FirefoxOptions()
+# options.add_argument('-headless')
+# fire = webdriver.FirefoxProfile()
+# fire.set_preference("http.response.timeout", 3)
+# fire.set_preference("dom.max_script_run_time", 3)
+# driver = webdriver.Firefox(
+#     executable_path=geckodriver_path, firefox_profile=fire, options = options)
+# url = "https://www.diretta.it"
+# get_odds(url, driver, "UDFgrSAP")
 
 #scrape_teams("calcio/europa/europei")
 # crontab -e */5 15-22 * 1-5,9-12 6,7 /home/script.sh
@@ -506,7 +411,7 @@ def get_input_stream(previuos_len):
 #             "\n", "") for team in line[1:] if team.replace("\n", "") != ""]
 #         campionati[line[0].replace(" ", "")] = team_list
     
-# get_ended_matches(25, campionati, columns)
+# get_ended_matches(30, campionati, columns)
 #filter_matches(25, columns)
 
 
@@ -547,3 +452,4 @@ def get_input_stream(previuos_len):
         #     print(matches[0])
         
         # driver.close()
+

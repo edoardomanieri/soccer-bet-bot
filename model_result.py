@@ -10,56 +10,39 @@ from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import joblib
-
-def nan_imputation(train_df, test_df, thresh = 'half'):
-
-    #eliminate rows with a lot of nans
-    if thresh == 'half':
-        thresh = len(test_df.columns) // 2
-    test_df.dropna(axis = 0, thresh = thresh, inplace = True)
-
-    #imputing the other nans
-    nan_cols = [i for i in test_df.columns if test_df[i].isnull().any() if i not in ['home_final_score', 'away_final_score']]
-    for col in nan_cols:
-
-        col_df = train_df[(~train_df['home_' + col[5:]].isnull()) & (~train_df['away_' + col[5:]].isnull())]
-    
-        if 'away' in col:
-            continue
-
-        col = col[5:]
-        nan_mask = test_df['home_' + col].isnull() | test_df['away_' + col].isnull()
-
-        if "possesso_palla" in col:
-            test_df.loc[nan_mask, 'home_possesso_palla'] = 50
-            test_df.loc[nan_mask, 'away_possesso_palla'] = 50
-            continue
-
-        for m in np.arange(5, 90, 5):
-            mask_min_test = test_df['minute'] >= m
-            mask_max_test = test_df['minute'] <= m + 5
-            mask_min_train = col_df['minute'] >= m
-            mask_max_train = col_df['minute'] <= m + 5
-            test_df.loc[(mask_min_test) & (mask_max_test) & (nan_mask), 'home_' + col] = col_df.loc[mask_min_train & mask_max_train, ['home_' + col, 'away_' + col]].mean().mean()
-            test_df.loc[(mask_min_test) & (mask_max_test) & (nan_mask), 'away_' + col] = col_df.loc[mask_min_train & mask_max_train, ['home_' + col, 'away_' + col]].mean().mean()
-    
-    test_df.dropna(inplace = True)
-    return test_df
+import utils
 
 
 def get_input_data():
-    all_files = glob.glob("../csv/*.csv")
+    all_files = sorted(glob.glob("../csv/*.csv"), key = lambda x: int(x[12:-4]))
     input_df = pd.read_csv(all_files[-1], index_col=None, header=0)
     return input_df.sort_values(by = ['id_partita', 'minute'], ascending = [True, False]).groupby(['id_partita']).first().reset_index() 
 
+def pop_input_odds_data(input_df):
+    odds_input = input_df.loc[:,['id_partita', 'minute', 'odd_1', 'odd_X', 'odd_2']]
+    input_df.drop(columns=['id_partita', 'minute', 'odd_1', 'odd_X', 'odd_2'], inplace = True)
+    return odds_input
 
+def normalize_odds(input_df):
+    tmp = (1 - ((1 / input_df['odd_1']) + (1 / input_df['odd_X']) + (1 / input_df['odd_2']))) / 3
+    input_df['odd_1'] =  (1 / input_df['odd_1']) + tmp  
+    input_df['odd_X'] = (1 / input_df['odd_X']) + tmp  
+    input_df['odd_2'] = (1 / input_df['odd_2']) + tmp  
+    return input_df
+
+
+def drop_odds_col(df):
+    return df.drop(columns = ['odd_over', 'odd_under','odd_1', 'odd_X', 'odd_2'])
 
 def get_training_df():
     #import dataset
-    all_files = glob.glob("../csv/*.csv")
+    all_files = sorted(glob.glob("../csv/*.csv"), key = lambda x: int(x[12:-4]))
     li = [pd.read_csv(filename, index_col=None, header=0) for filename in all_files[:-1]]
     df = pd.concat(li, axis=0, ignore_index=True)
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
+
+    #drop odds variables
+    df = drop_odds_col(df)
 
     #change data type
     for col in df.columns:
@@ -67,8 +50,7 @@ def get_training_df():
             df[col] = pd.to_numeric(df[col])
 
     #nan imputation
-    df = nan_imputation(df,df)
-
+    df = utils.nan_imputation(df,df)
 
     #adding outcome columns
     df['result'] = np.where(df['home_final_score'] > df['away_final_score'], 1, np.where(df['home_final_score'] == df['away_final_score'], 2, 3))
@@ -86,7 +68,6 @@ def get_training_df():
 
     df['home_avg_goal_fatti'] = 0
     df['away_avg_goal_fatti'] = 0
-
     df['home_avg_goal_subiti'] = 0
     df['away_avg_goal_subiti'] = 0
 
@@ -121,6 +102,8 @@ def process_input_data(input_df, training_df):
     if 'home_final_score' in input_df.columns and 'away_final_score' in input_df.columns:
         input_df.drop(columns = ['home_final_score', 'away_final_score'], inplace = True)
 
+    input_df = utils.nan_imputation(training_df, input_df)
+
     #introduce target variables
     campionati = input_df['campionato'].unique()
     
@@ -153,7 +136,7 @@ def process_input_data(input_df, training_df):
             input_df.loc[input_df['away'] == team,'away_avg_goal_subiti'] = training_df.loc[training_df['away'] == team,:].reset_index()['away_avg_goal_subiti'][0]
 
 
-    input_df = nan_imputation(training_df, input_df)
+
     
     return input_df
 
@@ -198,7 +181,7 @@ def get_predictions_table_nodraws(input_df,predictions,probabilities,threshold =
              .sort_values(by = 'probability', ascending = False, inplace = False)
     return final_df
 
-def get_complete_predictions_table(input_df,predictions,probabilities,threshold = 0.7):
+def get_complete_predictions_table(input_df,predictions,probabilities,threshold = 0.5):
     input_df['predictions'] = predictions
     input_df['probability'] = np.max(probabilities, axis = 1)
     prob_mask = input_df['probability'] >= threshold

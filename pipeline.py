@@ -1,10 +1,13 @@
 import model_result
 import model_goals
+import pandas as pd
 
 def real_time_output(reprocess_train_result_data = False, reprocess_train_goals_data = False,retrain_result_model = False, retrain_goals_model = False):
     
     ##########result###########
     input_result_df = model_result.get_input_data()
+    input_result_df = model_result.normalize_odds(input_result_df)
+    input_result_odds = model_result.pop_input_odds_data(input_result_df)
 
     if reprocess_train_result_data:
         train_result_df = model_result.get_training_df()
@@ -24,6 +27,8 @@ def real_time_output(reprocess_train_result_data = False, reprocess_train_goals_
     ########goals############
 
     input_goals_df = model_goals.get_input_data()
+    input_goals_df = model_result.normalize_odds(input_goals_df)
+    input_goals_odds = model_result.pop_input_odds_data(input_goals_df)
 
     if reprocess_train_goals_data:
         train_goals_df = model_goals.get_training_df()
@@ -51,3 +56,12 @@ def real_time_output(reprocess_train_result_data = False, reprocess_train_goals_
 
 
 real_time_output(False,False,False,False)
+
+#peso dei risultati dati-prior
+#si parte da un 50-50
+#si arriva a un 100-0
+#rate di aumento 0.5 / 90 al minuto
+
+#calcolare probabilità a partire da regressione
+#ad esempio se l'algoritmo predice 4 si avrà un over 2.5 con l'80 %
+#rate (0.8/1.6)

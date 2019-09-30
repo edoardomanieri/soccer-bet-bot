@@ -14,13 +14,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 import os
 import glob
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 import traceback
 import signal
 from functools import partial
 import calendar
 import locale
-import model
 import scrape_statistics as ss
 import sys
 
@@ -82,8 +81,9 @@ if __name__ == "__main__":
                 ss.get_match_statistics(day, columns, campionati, i, discard_list)
                 #print(model.real_time_output(retrain_model = True))
                 print("Now you can safely stop the process...")
+                print(datetime.now().time())
                 
-                time.sleep(300)
+                time.sleep(60)
         except KeyboardInterrupt:
             print("getting final scores....")
             ss.get_ended_matches(day, campionati, columns)

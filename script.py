@@ -9,6 +9,7 @@ from xgboost import XGBClassifier, XGBRegressor
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, mean_squared_error
+import model_result, utils
 
 def process_test_data(training_df, test_df):
     #introduce target variables
@@ -30,7 +31,6 @@ def process_test_data(training_df, test_df):
 
     test_df['home_avg_goal_fatti'] = 0
     test_df['away_avg_goal_fatti'] = 0
-
     test_df['home_avg_goal_subiti'] = 0
     test_df['away_avg_goal_subiti'] = 0
 
@@ -51,26 +51,29 @@ def process_test_data(training_df, test_df):
 
 
 #import dataset
-all_files = glob.glob("../csv/*.csv")
+all_files = sorted(glob.glob("../csv/*.csv"), key = lambda x: int(x[12:-4]))
 li = [pd.read_csv(filename, index_col=None, header=0) for filename in all_files]
 df = pd.concat(li, axis=0, ignore_index=True)
 cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
 
+#drop odds col
+df = model_result.drop_odds_col(df)
 
 #change data type
 for col in df.columns:
     if col not in cat_col:
         df[col] = pd.to_numeric(df[col])
 
-#nan imputation
-
-df = model.nan_imputation(df, df)
 
 #splittare test and train in modo che nel train ci siano alcune partite, nel test altre
 id_partita_test = np.random.choice(df['id_partita'].unique(), size = len(df['id_partita'].unique()) // 4, replace = False)
 test_mask = df['id_partita'].isin(id_partita_test)
 test = df.loc[test_mask, :].copy(deep =  True)
 train = df.loc[~(test_mask), :].copy(deep = True)
+
+#nan imputation
+train = utils.nan_imputation(train, train)
+test = utils.nan_imputation(train, test)
 
 #adding outcome columns
 train['result'] = np.where(train['home_final_score'] > train['away_final_score'], 1, np.where(train['home_final_score'] == train['away_final_score'], 2, 3))
@@ -90,7 +93,6 @@ for camp in campionati:
 
 train['home_avg_goal_fatti'] = 0
 train['away_avg_goal_fatti'] = 0
-
 train['home_avg_goal_subiti'] = 0
 train['away_avg_goal_subiti'] = 0
 
