@@ -158,10 +158,35 @@ def get_predict(model, input_df):
     predictions = input_df['predictions'].values
     return predictions
 
+def _get_over_probabilities(df_input):
+
+    def f(x):
+        if x < 0:
+            x = -x
+            return 1 - ((x**3 + (x**2) + x + 1) / (x**3 + x**2 + 2*x + 2))
+        else:
+            return (x**3 + (x**2) + x + 1) / (x**3 + x**2 + 2*x + 2)
+
+    df_input['probability_over'] = df_input['predictions'].apply(lambda row: f(row))
+    return df_input
+
 
 def get_complete_predictions_table(input_df,predictions):
     input_df['predictions'] = predictions
-    final_df = input_df.loc[:, ['id_partita', 'home', 'away', 'minute', 'home_score','away_score','predictions']]\
+    input_df = _get_over_probabilities(input_df)
+    final_df = input_df.loc[:, ['id_partita', 'home', 'away', 'minute', 'home_score','away_score','predictions', 'probability_over']]\
              .sort_values(by = ['minute'], ascending = False, inplace = False)
+  
     return final_df
+
+def get_prior_posterior_predictions(input_pred_df, input_odds_df):
+    rate = 0.5 / 90
+    res_df = input_pred_df.merge(input_odds_df, on = ['id_partita', 'minute'])
+    res_df['probability_final_over'] = ((0.5 + (rate*res_df['minute'])) * res_df['probability_over'])\
+                                         * ((0.5 - (rate*res_df['minute'])) * res_df['odd_over'])
+    res_df['probability_final_under'] = ((0.5 + (rate*res_df['minute'])) * (1-res_df['probability_over']))\
+                                         * ((0.5 - (rate*res_df['minute'])) * res_df['odd_under'])
+    res_df['prediction_final_over'] = np.argmax(res_df[['probability_final_over','probability_final_under']], axis = 1)
+    res_df['prediction_final_over'] = np.where(res_df['prediction_final_over'] == 0, 'over', 'under')
+    return res_df
 

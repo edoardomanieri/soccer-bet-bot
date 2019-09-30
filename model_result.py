@@ -134,9 +134,6 @@ def process_input_data(input_df, training_df):
             input_df.loc[input_df['away'] == team,'away_avg_goal_fatti'] = training_df.loc[training_df['away'] == team,:].reset_index()['away_avg_goal_fatti'][0]
             input_df.loc[input_df['home'] == team,'home_avg_goal_subiti'] = training_df.loc[training_df['home'] == team,:].reset_index()['home_avg_goal_subiti'][0]
             input_df.loc[input_df['away'] == team,'away_avg_goal_subiti'] = training_df.loc[training_df['away'] == team,:].reset_index()['away_avg_goal_subiti'][0]
-
-
-
     
     return input_df
 
@@ -181,12 +178,35 @@ def get_predictions_table_nodraws(input_df,predictions,probabilities,threshold =
              .sort_values(by = 'probability', ascending = False, inplace = False)
     return final_df
 
-def get_complete_predictions_table(input_df,predictions,probabilities,threshold = 0.5):
+def get_complete_predictions_table_old(input_df,predictions,probabilities,threshold = 0.5):
+    #deprecated
     input_df['predictions'] = predictions
-    input_df['probability'] = np.max(probabilities, axis = 1)
+    input_df['probability_result'] = np.max(probabilities, axis = 1)
     prob_mask = input_df['probability'] >= threshold
     final_df = input_df.loc[prob_mask, ['id_partita','home', 'away', 'minute', 'home_score',\
          'away_score', 'probability','predictions']]\
              .sort_values(by = ['probability', 'minute'], ascending = False, inplace = False)
     return final_df
 
+def get_complete_predictions_table(input_df,predictions,probabilities,threshold = 0.5):
+    input_df['predictions'] = predictions
+    input_df['probability_1'] = probabilities[0]
+    input_df['probability_X'] = probabilities[1]
+    input_df['probability_2'] = probabilities[2]
+    prob_mask = input_df['probability'] >= threshold
+    final_df = input_df.loc[prob_mask, ['id_partita','home', 'away', 'minute', 'home_score',\
+         'away_score', 'probability_1','probability_X', 'probability_2' 'predictions']]\
+             .sort_values(by = ['minute'], ascending = False, inplace = False)
+    return final_df
+
+def get_prior_posterior_predictions(input_pred_df, input_odds_df):
+    rate = 0.5 / 90
+    res_df = input_pred_df.merge(input_odds_df, on = ['id_partita', 'minute'])
+    res_df['probability_final_result_1'] = ((0.5 + (rate*res_df['minute'])) * res_df['probability_1'])\
+                                         * ((0.5 - (rate*res_df['minute'])) * res_df['odd_1'])
+    res_df['probability_final_result_X'] = ((0.5 + (rate*res_df['minute'])) * res_df['probability_X'])\
+                                         * ((0.5 - (rate*res_df['minute'])) * res_df['odd_X'])
+    res_df['probability_final_result_2'] = ((0.5 + (rate*res_df['minute'])) * res_df['probability_2'])\
+                                         * ((0.5 - (rate*res_df['minute'])) * res_df['odd_2'])
+    res_df['prediction_final_result'] = np.argmax(res_df[['probability_final_result_1','probability_final_result_X', 'probability_final_result_2']], axis = 1) + 1
+    return res_df                    
