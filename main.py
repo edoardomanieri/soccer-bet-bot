@@ -26,8 +26,6 @@ import sys
 
 if __name__ == "__main__":
 
-    predictions = False
-
     files = glob.glob("../csv/stats*")
     day = len(files) + 1
     
@@ -66,24 +64,11 @@ if __name__ == "__main__":
         try:
             with open("./discard", "r") as f1:
                 discard_list = [line.replace("\n", "").strip() for line in f1.readlines()]
-            if predictions:
-                while i < 5:
-                    print("getting matches statistics, don't stop the process...")
-                    ss.get_match_statistics_for_predictions(day, columns, campionati, i, discard_list)
-                    previous_len += ss.get_input_stream(previous_len)
-                    print("Now you can safely stop the process...")
-                    time.sleep(60)
-                print("getting matches statistics, don't stop the process...")
-                ss.get_match_statistics(day, columns, campionati, i, discard_list)
-                print("Now you can safely stop the process...")
-            else:
-                print("getting matches statistics, don't stop the process...")
-                ss.get_match_statistics(day, columns, campionati, i, discard_list)
-                #print(model.real_time_output(retrain_model = True))
-                print("Now you can safely stop the process...")
-                print(datetime.now().time())
-                
-                time.sleep(60)
+            print("getting matches statistics, don't stop the process...")
+            ss.get_match_statistics(day, columns, campionati, i, discard_list)
+            print("Now you can safely stop the process...")
+            print(datetime.now().time())   
+            time.sleep(60)
         except KeyboardInterrupt:
             print("getting final scores....")
             ss.get_ended_matches(day, campionati, columns)

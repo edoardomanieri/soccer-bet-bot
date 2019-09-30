@@ -14,7 +14,7 @@ import utils
 
 
 def get_input_data():
-    all_files = sorted(glob.glob("../csv/*.csv"), key = lambda x: int(x[12:-4]))
+    all_files = sorted(glob.glob("../../csv/*.csv"), key = lambda x: int(x[12:-4]))
     input_df = pd.read_csv(all_files[-1], index_col=None, header=0)
     return input_df.sort_values(by = ['id_partita', 'minute'], ascending = [True, False]).groupby(['id_partita']).first().reset_index() 
 
@@ -34,9 +34,9 @@ def normalize_odds(input_df):
 def drop_odds_col(df):
     return df.drop(columns = ['odd_over', 'odd_under','odd_1', 'odd_X', 'odd_2'])
 
-def get_training_df():
+def get_training_df(add_prematch_cols = False):
     #import dataset
-    all_files = sorted(glob.glob("../csv/*.csv"), key = lambda x: int(x[12:-4]))
+    all_files = sorted(glob.glob("../../csv/*.csv"), key = lambda x: int(x[12:-4]))
     li = [pd.read_csv(filename, index_col=None, header=0) for filename in all_files[:-1]]
     df = pd.concat(li, axis=0, ignore_index=True)
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
@@ -60,45 +60,46 @@ def get_training_df():
     df['result_strongness'] = (df['home_score'] - df['away_score']) * df['minute']
 
     #prematch columns
-    campionati = df['campionato'].unique()
-    df['avg_camp_goals'] = 0
+    if add_prematch_cols:
+        campionati = df['campionato'].unique()
+        df['avg_camp_goals'] = 0
 
-    df_matches = df[['home', 'away', 'campionato', 'home_final_score', 'away_final_score', 'id_partita', 'final_total_goals']].groupby('id_partita').first().reset_index()
-    for camp in campionati:
-        df.loc[df['campionato'] == camp,'avg_camp_goals'] = df_matches.loc[df_matches['campionato'] == camp,'final_total_goals'].mean()
+        df_matches = df[['home', 'away', 'campionato', 'home_final_score', 'away_final_score', 'id_partita', 'final_total_goals']].groupby('id_partita').first().reset_index()
+        for camp in campionati:
+            df.loc[df['campionato'] == camp,'avg_camp_goals'] = df_matches.loc[df_matches['campionato'] == camp,'final_total_goals'].mean()
 
-    df['home_avg_goal_fatti'] = 0
-    df['away_avg_goal_fatti'] = 0
-    df['home_avg_goal_subiti'] = 0
-    df['away_avg_goal_subiti'] = 0
+        df['home_avg_goal_fatti'] = 0
+        df['away_avg_goal_fatti'] = 0
+        df['home_avg_goal_subiti'] = 0
+        df['away_avg_goal_subiti'] = 0
 
-    squadre = set((df['home'].unique().tolist() + df['away'].unique().tolist()))
+        squadre = set((df['home'].unique().tolist() + df['away'].unique().tolist()))
 
-    for team in squadre:
-        n_match_home = len(df_matches[df_matches['home'] == team])
-        n_match_away = len(df_matches[df_matches['away'] == team])
+        for team in squadre:
+            n_match_home = len(df_matches[df_matches['home'] == team])
+            n_match_away = len(df_matches[df_matches['away'] == team])
 
-        sum_home_fatti = df_matches.loc[(df_matches['home'] == team),'home_final_score'].sum()
-        sum_away_fatti = df_matches.loc[(df_matches['away'] == team),'away_final_score'].sum()
+            sum_home_fatti = df_matches.loc[(df_matches['home'] == team),'home_final_score'].sum()
+            sum_away_fatti = df_matches.loc[(df_matches['away'] == team),'away_final_score'].sum()
 
-        #divide by 0
-        if (n_match_home + n_match_away) == 0:
-            n_match_away += 1
+            #divide by 0
+            if (n_match_home + n_match_away) == 0:
+                n_match_away += 1
 
-        df.loc[df['home'] == team,'home_avg_goal_fatti'] = (sum_home_fatti + sum_away_fatti) / (n_match_home + n_match_away)
-        df.loc[df['away'] == team,'away_avg_goal_fatti'] = (sum_home_fatti + sum_away_fatti) / (n_match_home + n_match_away)
+            df.loc[df['home'] == team,'home_avg_goal_fatti'] = (sum_home_fatti + sum_away_fatti) / (n_match_home + n_match_away)
+            df.loc[df['away'] == team,'away_avg_goal_fatti'] = (sum_home_fatti + sum_away_fatti) / (n_match_home + n_match_away)
 
-        sum_home_subiti = df_matches.loc[(df_matches['home'] == team),'away_final_score'].sum()
-        sum_away_subiti = df_matches.loc[(df_matches['away'] == team),'home_final_score'].sum()
+            sum_home_subiti = df_matches.loc[(df_matches['home'] == team),'away_final_score'].sum()
+            sum_away_subiti = df_matches.loc[(df_matches['away'] == team),'home_final_score'].sum()
 
-        df.loc[df['home'] == team,'home_avg_goal_subiti'] = (sum_home_subiti + sum_away_subiti) / (n_match_home + n_match_away)
-        df.loc[df['away'] == team,'away_avg_goal_subiti'] = (sum_home_subiti + sum_away_subiti) / (n_match_home + n_match_away)
+            df.loc[df['home'] == team,'home_avg_goal_subiti'] = (sum_home_subiti + sum_away_subiti) / (n_match_home + n_match_away)
+            df.loc[df['away'] == team,'away_avg_goal_subiti'] = (sum_home_subiti + sum_away_subiti) / (n_match_home + n_match_away)
 
-    df.reset_index(drop = True).to_csv("../dfs/training_result.csv")
+    df.reset_index(drop = True).to_csv("../../dfs_cmp/training_result.csv")
     return df.reset_index(drop = True)
 
 
-def process_input_data(input_df, training_df):
+def process_input_data(input_df, training_df, add_prematch_cols = False):
 
     if 'home_final_score' in input_df.columns and 'away_final_score' in input_df.columns:
         input_df.drop(columns = ['home_final_score', 'away_final_score'], inplace = True)
@@ -110,32 +111,33 @@ def process_input_data(input_df, training_df):
     input_df['result_strongness'] = (input_df['home_score'] - input_df['away_score']) * input_df['minute']
 
     #prematch columns
-    campionati = input_df['campionato'].unique()
-    input_df['avg_camp_goals'] = 0
+    if add_prematch_cols:
+        campionati = input_df['campionato'].unique()
+        input_df['avg_camp_goals'] = 0
 
-    for camp in campionati:
-        if camp not in training_df['campionato'].unique():
-            input_df.loc[input_df['campionato'] == camp,'avg_camp_goals'] = training_df['avg_camp_goals'].mean()
-        else:
-            input_df.loc[input_df['campionato'] == camp,'avg_camp_goals'] = training_df.loc[training_df['campionato'] == camp,:].reset_index()['avg_camp_goals'][0]
+        for camp in campionati:
+            if camp not in training_df['campionato'].unique():
+                input_df.loc[input_df['campionato'] == camp,'avg_camp_goals'] = training_df['avg_camp_goals'].mean()
+            else:
+                input_df.loc[input_df['campionato'] == camp,'avg_camp_goals'] = training_df.loc[training_df['campionato'] == camp,:].reset_index()['avg_camp_goals'][0]
 
-    input_df['home_avg_goal_fatti'] = 0
-    input_df['away_avg_goal_fatti'] = 0
-    input_df['home_avg_goal_subiti'] = 0
-    input_df['away_avg_goal_subiti'] = 0
+        input_df['home_avg_goal_fatti'] = 0
+        input_df['away_avg_goal_fatti'] = 0
+        input_df['home_avg_goal_subiti'] = 0
+        input_df['away_avg_goal_subiti'] = 0
 
-    squadre = set((input_df['home'].unique().tolist() + input_df['away'].unique().tolist()))
-    for team in squadre:
-        if team not in training_df['home'].unique() or team not in training_df['away'].unique():
-            input_df.loc[input_df['home'] == team,'home_avg_goal_fatti'] = training_df['home_avg_goal_fatti'].mean()
-            input_df.loc[input_df['away'] == team,'away_avg_goal_fatti'] = training_df['away_avg_goal_fatti'].mean()
-            input_df.loc[input_df['home'] == team,'home_avg_goal_subiti'] = training_df['home_avg_goal_subiti'].mean()
-            input_df.loc[input_df['away'] == team,'away_avg_goal_subiti'] = training_df['away_avg_goal_subiti'].mean()
-        else:
-            input_df.loc[input_df['home'] == team,'home_avg_goal_fatti'] = training_df.loc[training_df['home'] == team,:].reset_index()['home_avg_goal_fatti'][0]
-            input_df.loc[input_df['away'] == team,'away_avg_goal_fatti'] = training_df.loc[training_df['away'] == team,:].reset_index()['away_avg_goal_fatti'][0]
-            input_df.loc[input_df['home'] == team,'home_avg_goal_subiti'] = training_df.loc[training_df['home'] == team,:].reset_index()['home_avg_goal_subiti'][0]
-            input_df.loc[input_df['away'] == team,'away_avg_goal_subiti'] = training_df.loc[training_df['away'] == team,:].reset_index()['away_avg_goal_subiti'][0]
+        squadre = set((input_df['home'].unique().tolist() + input_df['away'].unique().tolist()))
+        for team in squadre:
+            if team not in training_df['home'].unique() or team not in training_df['away'].unique():
+                input_df.loc[input_df['home'] == team,'home_avg_goal_fatti'] = training_df['home_avg_goal_fatti'].mean()
+                input_df.loc[input_df['away'] == team,'away_avg_goal_fatti'] = training_df['away_avg_goal_fatti'].mean()
+                input_df.loc[input_df['home'] == team,'home_avg_goal_subiti'] = training_df['home_avg_goal_subiti'].mean()
+                input_df.loc[input_df['away'] == team,'away_avg_goal_subiti'] = training_df['away_avg_goal_subiti'].mean()
+            else:
+                input_df.loc[input_df['home'] == team,'home_avg_goal_fatti'] = training_df.loc[training_df['home'] == team,:].reset_index()['home_avg_goal_fatti'][0]
+                input_df.loc[input_df['away'] == team,'away_avg_goal_fatti'] = training_df.loc[training_df['away'] == team,:].reset_index()['away_avg_goal_fatti'][0]
+                input_df.loc[input_df['home'] == team,'home_avg_goal_subiti'] = training_df.loc[training_df['home'] == team,:].reset_index()['home_avg_goal_subiti'][0]
+                input_df.loc[input_df['away'] == team,'away_avg_goal_subiti'] = training_df.loc[training_df['away'] == team,:].reset_index()['away_avg_goal_subiti'][0]
     
     return input_df
 

@@ -10,7 +10,7 @@ import utils
 
 
 def get_input_data():
-    all_files = sorted(glob.glob("../csv/*.csv"), key = lambda x: int(x[12:-4]))
+    all_files = sorted(glob.glob("../../csv/*.csv"), key = lambda x: int(x[12:-4]))
     input_df = pd.read_csv(all_files[-1], index_col=None, header=0)
     return input_df.sort_values(by = ['id_partita', 'minute'], ascending = [True, False]).groupby(['id_partita']).first().reset_index() 
 
@@ -30,7 +30,7 @@ def drop_odds_col(df):
 
 def get_training_df():
     #import dataset
-    all_files = sorted(glob.glob("../csv/*.csv"), key = lambda x: int(x[12:-4]))
+    all_files = sorted(glob.glob("../../csv/*.csv"), key = lambda x: int(x[12:-4]))
     li = [pd.read_csv(filename, index_col=None, header=0) for filename in all_files[:-1]]
     df = pd.concat(li, axis=0, ignore_index=True)
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
@@ -50,11 +50,10 @@ def get_training_df():
     df['result'] = np.where(df['home_final_score'] > df['away_final_score'], 1, np.where(df['home_final_score'] == df['away_final_score'], 2, 3))
     df['final_total_goals'] = df['home_final_score'] + df['away_final_score']
 
-
     #input columns
     df['actual_total_goals'] = df['home_score'] + df['away_score']
 
-    #prematch columns
+
     campionati = df['campionato'].unique()
     df['avg_camp_goals'] = 0
 
@@ -89,7 +88,7 @@ def get_training_df():
         df.loc[df['home'] == team,'home_avg_goal_subiti'] = (sum_home_subiti + sum_away_subiti) / (n_match_home + n_match_away)
         df.loc[df['away'] == team,'away_avg_goal_subiti'] = (sum_home_subiti + sum_away_subiti) / (n_match_home + n_match_away)
 
-    df.reset_index(drop = True).to_csv("../dfs/training_goals.csv")
+    df.reset_index(drop = True).to_csv("../../dfs_cmp/training_goals.csv")
     return df.reset_index(drop = True)
 
 
@@ -99,12 +98,9 @@ def process_input_data(input_df, training_df):
         input_df.drop(columns = ['home_final_score', 'away_final_score'], inplace = True)
 
     input_df = utils.nan_imputation(training_df, input_df)
-
-    #introduce target variables
     
     input_df['actual_total_goals'] = input_df['home_score'] + input_df['away_score']
 
-    #prematch columns
     campionati = input_df['campionato'].unique()
     input_df['avg_camp_goals'] = 0
 
@@ -135,7 +131,7 @@ def process_input_data(input_df, training_df):
     return input_df
 
 
-#drop_y_column = ['home_final_score', 'away_final_score', 'result', 'final_total_goals']
+
 def train_and_save_model(train):
     """
     Create model and save it with joblib

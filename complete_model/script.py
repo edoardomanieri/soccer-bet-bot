@@ -51,7 +51,7 @@ def process_test_data(training_df, test_df):
 
 
 #import dataset
-all_files = sorted(glob.glob("../csv/*.csv"), key = lambda x: int(x[12:-4]))
+all_files = sorted(glob.glob("../../csv/*.csv"), key = lambda x: int(x[12:-4]))
 li = [pd.read_csv(filename, index_col=None, header=0) for filename in all_files]
 df = pd.concat(li, axis=0, ignore_index=True)
 cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
