@@ -206,10 +206,10 @@ def get_prior_posterior_predictions(input_pred_df, input_odds_df):
     rate = 0.6 / 90
     res_df = input_pred_df.merge(input_odds_df, on = ['id_partita', 'minute'])
     res_df['probability_final_result_1'] = ((0.4 + (rate*res_df['minute'])) * res_df['probability_1'])\
-                                         * ((0.6 - (rate*res_df['minute'])) * res_df['odd_1'])
+                                         + ((0.6 - (rate*res_df['minute'])) * res_df['odd_1'])
     res_df['probability_final_result_X'] = ((0.4 + (rate*res_df['minute'])) * res_df['probability_X'])\
-                                         * ((0.6 - (rate*res_df['minute'])) * res_df['odd_X'])
+                                         + ((0.6 - (rate*res_df['minute'])) * res_df['odd_X'])
     res_df['probability_final_result_2'] = ((0.4 + (rate*res_df['minute'])) * res_df['probability_2'])\
-                                         * ((0.6 - (rate*res_df['minute'])) * res_df['odd_2'])
+                                         + ((0.6 - (rate*res_df['minute'])) * res_df['odd_2'])
     res_df['prediction_final_result'] = np.argmax(res_df[['probability_final_result_1','probability_final_result_X', 'probability_final_result_2']], axis = 1) + 1
     return res_df                    
