@@ -59,6 +59,7 @@ def get_training_df():
     df['actual_result'] = np.where(df['home_score'] > df['away_score'], 1, np.where(df['home_score'] == df['away_score'], 2, 3))
     df['result_strongness'] = (df['home_score'] - df['away_score']) * df['minute']
 
+    #prematch columns
     campionati = df['campionato'].unique()
     df['avg_camp_goals'] = 0
 
@@ -105,10 +106,11 @@ def process_input_data(input_df, training_df):
     input_df = utils.nan_imputation(training_df, input_df)
 
     #introduce target variables
-    campionati = input_df['campionato'].unique()
-    
     input_df['actual_result'] = np.where(input_df['home_score'] > input_df['away_score'], 1, np.where(input_df['home_score'] == input_df['away_score'], 2, 3))
     input_df['result_strongness'] = (input_df['home_score'] - input_df['away_score']) * input_df['minute']
+
+    #prematch columns
+    campionati = input_df['campionato'].unique()
     input_df['avg_camp_goals'] = 0
 
     for camp in campionati:
@@ -200,13 +202,14 @@ def get_complete_predictions_table(input_df,predictions,probabilities,threshold 
     return final_df
 
 def get_prior_posterior_predictions(input_pred_df, input_odds_df):
-    rate = 0.5 / 90
+    # al 15 minuto probabilità pesate 50-50
+    rate = 0.6 / 90
     res_df = input_pred_df.merge(input_odds_df, on = ['id_partita', 'minute'])
-    res_df['probability_final_result_1'] = ((0.5 + (rate*res_df['minute'])) * res_df['probability_1'])\
-                                         * ((0.5 - (rate*res_df['minute'])) * res_df['odd_1'])
-    res_df['probability_final_result_X'] = ((0.5 + (rate*res_df['minute'])) * res_df['probability_X'])\
-                                         * ((0.5 - (rate*res_df['minute'])) * res_df['odd_X'])
-    res_df['probability_final_result_2'] = ((0.5 + (rate*res_df['minute'])) * res_df['probability_2'])\
-                                         * ((0.5 - (rate*res_df['minute'])) * res_df['odd_2'])
+    res_df['probability_final_result_1'] = ((0.4 + (rate*res_df['minute'])) * res_df['probability_1'])\
+                                         * ((0.6 - (rate*res_df['minute'])) * res_df['odd_1'])
+    res_df['probability_final_result_X'] = ((0.4 + (rate*res_df['minute'])) * res_df['probability_X'])\
+                                         * ((0.6 - (rate*res_df['minute'])) * res_df['odd_X'])
+    res_df['probability_final_result_2'] = ((0.4 + (rate*res_df['minute'])) * res_df['probability_2'])\
+                                         * ((0.6 - (rate*res_df['minute'])) * res_df['odd_2'])
     res_df['prediction_final_result'] = np.argmax(res_df[['probability_final_result_1','probability_final_result_X', 'probability_final_result_2']], axis = 1) + 1
     return res_df                    

@@ -53,6 +53,8 @@ def get_training_df():
 
     #input columns
     df['actual_total_goals'] = df['home_score'] + df['away_score']
+
+    #prematch columns
     campionati = df['campionato'].unique()
     df['avg_camp_goals'] = 0
 
@@ -99,9 +101,11 @@ def process_input_data(input_df, training_df):
     input_df = utils.nan_imputation(training_df, input_df)
 
     #introduce target variables
-    campionati = input_df['campionato'].unique()
     
     input_df['actual_total_goals'] = input_df['home_score'] + input_df['away_score']
+
+    #prematch columns
+    campionati = input_df['campionato'].unique()
     input_df['avg_camp_goals'] = 0
 
     for camp in campionati:
@@ -180,12 +184,13 @@ def get_complete_predictions_table(input_df,predictions):
     return final_df
 
 def get_prior_posterior_predictions(input_pred_df, input_odds_df):
-    rate = 0.5 / 90
+    # al 15 minuto probabilità pesate 50-50
+    rate = 0.6 / 90
     res_df = input_pred_df.merge(input_odds_df, on = ['id_partita', 'minute'])
-    res_df['probability_final_over'] = ((0.5 + (rate*res_df['minute'])) * res_df['probability_over'])\
-                                         * ((0.5 - (rate*res_df['minute'])) * res_df['odd_over'])
-    res_df['probability_final_under'] = ((0.5 + (rate*res_df['minute'])) * (1-res_df['probability_over']))\
-                                         * ((0.5 - (rate*res_df['minute'])) * res_df['odd_under'])
+    res_df['probability_final_over'] = ((0.4 + (rate*res_df['minute'])) * res_df['probability_over'])\
+                                         * ((0.6 - (rate*res_df['minute'])) * res_df['odd_over'])
+    res_df['probability_final_under'] = ((0.4 + (rate*res_df['minute'])) * (1-res_df['probability_over']))\
+                                         * ((0.6 - (rate*res_df['minute'])) * res_df['odd_under'])
     res_df['prediction_final_over'] = np.argmax(res_df[['probability_final_over','probability_final_under']], axis = 1)
     res_df['prediction_final_over'] = np.where(res_df['prediction_final_over'] == 0, 'over', 'under')
     return res_df
