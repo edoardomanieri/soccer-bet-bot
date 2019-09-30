@@ -171,7 +171,7 @@ def _get_over_probabilities(df_input):
         else:
             return (x**3 + (x**2) + x + 1) / (x**3 + x**2 + 2*x + 2)
 
-    df_input['probability_over'] = df_input['predictions'].apply(lambda row: f(row))
+    df_input['probability_over'] = df_input['predictions'].apply(lambda row: f(row - 2.5))
     return df_input
 
 
