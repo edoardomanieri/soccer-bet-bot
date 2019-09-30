@@ -3,6 +3,10 @@ import pandas as pd
 
 def nan_imputation(train_df, test_df, thresh = 'half'):
 
+    #eliminate duplicate rows
+    subset = [col for col in test_df.columns if col != 'minute']
+    test_df.drop_duplicates(subset = subset, inplace = True)
+
     #eliminate rows with a lot of nans
     if thresh == 'half':
         thresh = len(test_df.columns) // 2
