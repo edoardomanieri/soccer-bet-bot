@@ -9,8 +9,10 @@ import joblib
 import utils
 
 def get_input_data():
-    all_files = sorted(glob.glob("../../csv/*.csv"), key = lambda x: int(x[12:-4]))
+    all_files = sorted(glob.glob("../../csv/*.csv"), key = lambda x: int(x[15:-4]))
     input_df = pd.read_csv(all_files[-1], index_col=None, header=0)
+    if 'Unnamed: 0' in input_df.columns:
+        input_df.drop(columns = ['Unnamed: 0'], inplace = True)
     return input_df.sort_values(by = ['id_partita', 'minute'], ascending = [True, False]).groupby(['id_partita']).first().reset_index() 
 
 def normalize_odds(input_df):
@@ -20,8 +22,8 @@ def normalize_odds(input_df):
     return input_df
 
 def pop_input_odds_data(input_df):
-    odds_input = input_df.loc[:,['id_partita', 'minute', 'odd_1', 'odd_X', 'odd_2']]
-    input_df.drop(columns=['id_partita', 'minute', 'odd_over', 'odd_under'], inplace = True)
+    odds_input = input_df.loc[:,['id_partita', 'minute', 'odd_under', 'odd_over']]
+    input_df.drop(columns=['odd_1', 'odd_2', 'odd_X', 'odd_over', 'odd_under'], inplace = True)
     return odds_input
 
 def drop_odds_col(df):
@@ -29,7 +31,7 @@ def drop_odds_col(df):
 
 def get_training_df():
     #import dataset
-    all_files = sorted(glob.glob("../../csv/*.csv"), key = lambda x: int(x[12:-4]))
+    all_files = sorted(glob.glob("../../csv/*.csv"), key = lambda x: int(x[15:-4]))
     li = [pd.read_csv(filename, index_col=None, header=0) for filename in all_files[:-1]]
     df = pd.concat(li, axis=0, ignore_index=True)
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
@@ -86,12 +88,11 @@ def get_predict_proba(model, input_df):
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
     predictions = model.predict(input_df.drop(columns = cat_col))
     probabilities = model.predict_proba(input_df.drop(columns = cat_col))
-    predictions = input_df['predictions'].values
     return predictions, probabilities
 
 def get_complete_predictions_table(input_df,predictions, probabilities):
     input_df['predictions'] = predictions
-    input_df['probability_over'] = probabilities[0]
+    input_df['probability_over'] = probabilities[:,0]
     final_df = input_df.loc[:, ['id_partita', 'home', 'away', 'minute', 'home_score','away_score','predictions', 'probability_over']]\
              .sort_values(by = ['minute'], ascending = False, inplace = False)
     return final_df
@@ -104,7 +105,7 @@ def get_prior_posterior_predictions(input_pred_df, input_odds_df):
                                          + ((0.6 - (rate*res_df['minute'])) * res_df['odd_over'])
     res_df['probability_final_under'] = ((0.4 + (rate*res_df['minute'])) * (1-res_df['probability_over']))\
                                          + ((0.6 - (rate*res_df['minute'])) * res_df['odd_under'])
-    res_df['prediction_final_over'] = np.argmax(res_df[['probability_final_over','probability_final_under']], axis = 1)
+    res_df['prediction_final_over'] = np.argmax(res_df[['probability_final_over','probability_final_under']].values, axis = 1)
     res_df['prediction_final_over'] = np.where(res_df['prediction_final_over'] == 0, 'over', 'under')
     return res_df
 

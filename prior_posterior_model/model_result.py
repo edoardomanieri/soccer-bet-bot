@@ -14,13 +14,15 @@ import utils
 
 
 def get_input_data():
-    all_files = sorted(glob.glob("../../csv/*.csv"), key = lambda x: int(x[12:-4]))
+    all_files = sorted(glob.glob("../../csv/*.csv"), key = lambda x: int(x[15:-4]))
     input_df = pd.read_csv(all_files[-1], index_col=None, header=0)
+    if 'Unnamed: 0' in input_df.columns:
+        input_df.drop(columns = ['Unnamed: 0'], inplace = True)
     return input_df.sort_values(by = ['id_partita', 'minute'], ascending = [True, False]).groupby(['id_partita']).first().reset_index() 
 
 def pop_input_odds_data(input_df):
     odds_input = input_df.loc[:,['id_partita', 'minute', 'odd_1', 'odd_X', 'odd_2']]
-    input_df.drop(columns=['id_partita', 'minute', 'odd_1', 'odd_X', 'odd_2'], inplace = True)
+    input_df.drop(columns=['odd_1', 'odd_X', 'odd_2', 'odd_under', 'odd_over'], inplace = True)
     return odds_input
 
 def normalize_odds(input_df):
@@ -36,9 +38,11 @@ def drop_odds_col(df):
 
 def get_training_df():
     #import dataset
-    all_files = sorted(glob.glob("../../csv/*.csv"), key = lambda x: int(x[12:-4]))
+    all_files = sorted(glob.glob("../../csv/*.csv"), key = lambda x: int(x[15:-4]))
     li = [pd.read_csv(filename, index_col=None, header=0) for filename in all_files[:-1]]
     df = pd.concat(li, axis=0, ignore_index=True)
+    if 'Unnamed: 0' in df.columns:
+        df.drop(columns = ['Unnamed: 0'], inplace = True)
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
 
     #drop odds variables
@@ -128,12 +132,12 @@ def get_complete_predictions_table_old(input_df,predictions,probabilities,thresh
 
 def get_complete_predictions_table(input_df,predictions,probabilities,threshold = 0.5):
     input_df['predictions'] = predictions
-    input_df['probability_1'] = probabilities[0]
-    input_df['probability_X'] = probabilities[1]
-    input_df['probability_2'] = probabilities[2]
-    prob_mask = input_df['probability'] >= threshold
-    final_df = input_df.loc[prob_mask, ['id_partita','home', 'away', 'minute', 'home_score',\
-         'away_score', 'probability_1','probability_X', 'probability_2' 'predictions']]\
+    input_df['probability_1'] = probabilities[:,0]
+    input_df['probability_X'] = probabilities[:,1]
+    input_df['probability_2'] = probabilities[:,2]
+    #prob_mask = input_df['probability'] >= threshold
+    final_df = input_df.loc[:, ['id_partita','home', 'away', 'minute', 'home_score',\
+         'away_score', 'probability_1','probability_X', 'probability_2', 'predictions']]\
              .sort_values(by = ['minute'], ascending = False, inplace = False)
     return final_df
 
@@ -147,5 +151,5 @@ def get_prior_posterior_predictions(input_pred_df, input_odds_df):
                                          + ((0.6 - (rate*res_df['minute'])) * res_df['odd_X'])
     res_df['probability_final_result_2'] = ((0.4 + (rate*res_df['minute'])) * res_df['probability_2'])\
                                          + ((0.6 - (rate*res_df['minute'])) * res_df['odd_2'])
-    res_df['prediction_final_result'] = np.argmax(res_df[['probability_final_result_1','probability_final_result_X', 'probability_final_result_2']], axis = 1) + 1
+    res_df['prediction_final_result'] = np.argmax(res_df[['probability_final_result_1','probability_final_result_X', 'probability_final_result_2']].values, axis = 1) + 1
     return res_df                    

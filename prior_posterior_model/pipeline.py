@@ -13,6 +13,8 @@ def real_time_output(reprocess_train_result_data = False, reprocess_train_goals_
         train_result_df = model_result.get_training_df()
     else:
         train_result_df = pd.read_csv("../../dfs_pp/training_result.csv", header = 0)
+    if 'Unnamed: 0' in train_result_df.columns:
+        train_result_df.drop(columns = ['Unnamed: 0'], inplace = True)
 
     input_result_df = model_result.process_input_data(input_result_df, train_result_df, )
 
@@ -28,13 +30,15 @@ def real_time_output(reprocess_train_result_data = False, reprocess_train_goals_
     ########goals############
 
     input_goals_df = model_goals.get_input_data()
-    input_goals_df = model_result.normalize_odds(input_goals_df)
-    input_goals_odds = model_result.pop_input_odds_data(input_goals_df)
+    input_goals_df = model_goals.normalize_odds(input_goals_df)
+    input_goals_odds = model_goals.pop_input_odds_data(input_goals_df)
 
     if reprocess_train_goals_data:
         train_goals_df = model_goals.get_training_df()
     else:
         train_goals_df = pd.read_csv("../../dfs_pp/training_goals.csv", header = 0)
+    if 'Unnamed: 0' in train_goals_df.columns:
+        train_goals_df.drop(columns = ['Unnamed: 0'], inplace = True)
 
     input_goals_df = model_goals.process_input_data(input_goals_df, train_goals_df, )
 

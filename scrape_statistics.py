@@ -20,7 +20,6 @@ import signal
 from functools import partial
 import calendar
 import locale
-import model_result as model
 import joblib
 
 def get_match_statistics(day, columns, campionati, possesso_palla_index, discard_list):
@@ -411,7 +410,7 @@ def get_odds(url, driver, match):
 #             "\n", "") for team in line[1:] if team.replace("\n", "") != ""]
 #         campionati[line[0].replace(" ", "")] = team_list
     
-# get_ended_matches(30, campionati, columns)
+# get_ended_matches(33, campionati, columns)
 #filter_matches(25, columns)
 
 

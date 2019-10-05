@@ -67,8 +67,8 @@ if __name__ == "__main__":
             print("getting matches statistics, don't stop the process...")
             ss.get_match_statistics(day, columns, campionati, i, discard_list)
             print("Now you can safely stop the process...")
-            print(datetime.now().time())   
-            time.sleep(60)
+            print(datetime.now().time())
+            time.sleep(120)
         except KeyboardInterrupt:
             print("getting final scores....")
             ss.get_ended_matches(day, campionati, columns)
