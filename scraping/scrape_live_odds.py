@@ -21,35 +21,45 @@ from functools import partial
 import calendar
 import locale
 import joblib
+from selenium.webdriver.support.ui import Select
 
-def get_match_statistics(day, columns, campionati, possesso_palla_index, discard_list):
 
-    d = date.today().strftime("%d/%m/%Y")
 
-    geckodriver_path = "./geckodriver"
+geckodriver_path = "./geckodriver"
+options = webdriver.FirefoxOptions()
+options.add_argument('-headless')
+fire = webdriver.FirefoxProfile()
+fire.set_preference("http.response.timeout", 3)
+fire.set_preference("dom.max_script_run_time", 3)
+driver = webdriver.Firefox(
+    executable_path=geckodriver_path, firefox_profile=fire)
+url = "https://www.betfair.it/exchange/plus/football/inplay"
 
-    options = webdriver.FirefoxOptions()
-    options.add_argument('-headless')
-    fire = webdriver.FirefoxProfile()
-    fire.set_preference("http.response.timeout", 3)
-    fire.set_preference("dom.max_script_run_time", 3)
-    driver = webdriver.Firefox(
-        executable_path=geckodriver_path, firefox_profile=fire, options=options)
-    url = "https://www.diretta.it"
-    f = open("../csv/stats" + str(day) + ".csv", "a")
+driver.get(url)
+time.sleep(2)
+content = driver.page_source
+soup_initial_page = BeautifulSoup(content, "lxml")
+
+#driver.find_element_by_xpath('//*[@id="main-wrapper"]/div/div[2]/div/ui-view/div/div/div/div/div[1]/div/div[1]/bf-super-coupon/main/ng-include[2]/section/div[2]/bf-select/div/label').click()
+#driver.find_element_by_xpath('//*[@id="main-wrapper"]/div/div[2]/div/ui-view/div/div/div/div/div[1]/div/div[1]/bf-super-coupon/main/ng-include[2]/section/div[2]/bf-select/div/div/bf-option[7]/span').click()
+matches = soup_initial_page.find_all("ul", class_="runners")
+
+#for match in matches:
+teamA = matches[0].find("li", class_="name").get_text().lower()
+print(teamA)
+
+time.sleep(5)
+driver.close()
+def get_live_odds(content, teamA, teamB):
+
     try:
-        driver.get(url)
-        content_initial_page = driver.page_source
-        soup_initial_page = BeautifulSoup(content_initial_page, "lxml")
-        matches = soup_initial_page.find_all("div", class_="event__match event__match--live event__match--oneLine") + \
-            soup_initial_page.find_all(
-                "div", class_="event__match event__match--live event__match--last event__match--oneLine")
+        soup_initial_page = BeautifulSoup(content, "lxml")
+        matches = soup_initial_page.find_all("div", class_="heightRowMatchLive  descriptionMatchLivePage")
         
         for match in matches:
-            teamA = match.find(
-                "div", class_="event__participant event__participant--home").get_text().lower()
-            teamB = match.find(
-                "div", class_="event__participant event__participant--away").get_text().lower()
+            teams = match.find(
+                "a", class_="homeAwayTeamsLivePage capitalize ng-binding").get_text().lower()
+
 
             if (teamA not in [item for sublist in campionati.values() for item in sublist]) and (teamB not in [item for sublist in campionati.values() for item in sublist]):
                 continue
@@ -410,7 +420,7 @@ def get_odds(url, driver, match):
 #             "\n", "") for team in line[1:] if team.replace("\n", "") != ""]
 #         campionati[line[0].replace(" ", "")] = team_list
     
-# get_ended_matches(33, campionati, columns)
+# get_ended_matches(35, campionati, columns)
 #filter_matches(25, columns)
 
 
@@ -451,4 +461,3 @@ def get_odds(url, driver, match):
         #     print(matches[0])
         
         # driver.close()
-
