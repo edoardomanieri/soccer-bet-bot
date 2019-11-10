@@ -2,11 +2,9 @@ import pandas as pd
 import numpy as np
 import glob
 import os
-import time
 from xgboost import XGBClassifier
-from sklearn.metrics import mean_squared_error
 import joblib
-
+from matches_predictor import utils
 
 
 def get_input_data():
@@ -100,7 +98,7 @@ def get_predict_proba(model, input_df):
     return predictions, probabilities
 
 
-def get_complete_predictions_table(input_df,predictions, probabilities):
+def get_complete_predictions_table(input_df, predictions, probabilities):
     input_df['predictions'] = predictions
     input_df['probability_over'] = probabilities[:,0]
     final_df = input_df.loc[:, ['id_partita', 'home', 'away', 'minute', 'home_score','away_score','predictions', 'probability_over']]\
@@ -119,4 +117,3 @@ def get_prior_posterior_predictions(input_pred_df, input_odds_df):
     res_df['prediction_final_over'] = np.argmax(res_df[['probability_final_over','probability_final_under']].values, axis = 1)
     res_df['prediction_final_over'] = np.where(res_df['prediction_final_over'] == 0, 'over', 'under')
     return res_df
-
