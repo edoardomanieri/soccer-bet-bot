@@ -1,6 +1,6 @@
 import pandas as pd
 from matches_predictor import goals_utils
-
+import os
 
 def get_live_predictions(reprocess_train_data=False,
                          retrain_model=False):

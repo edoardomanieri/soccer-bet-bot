@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 from selenium import webdriver
 from bs4 import BeautifulSoup
 import time
@@ -23,10 +21,10 @@ import locale
 import joblib
 
 def get_match_statistics(day, columns, campionati, possesso_palla_index, discard_list):
-
+    file_path = os.path.dirname(os.path.abspath(__file__))
     d = date.today().strftime("%d/%m/%Y")
 
-    geckodriver_path = "./geckodriver"
+    geckodriver_path = file_path + "/geckodriver"
 
     options = webdriver.FirefoxOptions()
     options.add_argument('-headless')
@@ -36,7 +34,7 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
     driver = webdriver.Firefox(
         executable_path=geckodriver_path, firefox_profile=fire, options=options)
     url = "https://www.diretta.it"
-    f = open("../csv/stats" + str(day) + ".csv", "a")
+    f = open(file_path + "/../csv/stats" + str(day) + ".csv", "a")
     try:
         driver.get(url)
         content_initial_page = driver.page_source
@@ -178,7 +176,8 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
 
 def get_ended_matches(day, campionati, columns):
     try:
-        geckodriver_path = "./geckodriver"
+        file_path = os.path.dirname(os.path.abspath(__file__))
+        geckodriver_path = file_path + "/geckodriver"
         options = webdriver.FirefoxOptions()
         options.add_argument('-headless')
         fire = webdriver.FirefoxProfile()
@@ -232,7 +231,7 @@ def get_ended_matches(day, campionati, columns):
                         "div", class_="event__participant event__participant--home fontBold")
                     teamA_notbold = match.find(
                         "div", class_="event__participant event__participant--home")
-                    if teamA_bold == None:
+                    if teamA_bold is None:
                         teamA = teamA_notbold.get_text().lower().strip()
                     else:
                         teamA = teamA_bold.get_text().lower().strip()
@@ -241,7 +240,7 @@ def get_ended_matches(day, campionati, columns):
                         "div", class_="event__participant event__participant--away fontBold")
                     teamB_notbold = match.find(
                         "div", class_="event__participant event__participant--away")
-                    if teamB_bold == None:
+                    if teamB_bold is None:
                         teamB = teamB_notbold.get_text().lower().strip()
                     else:
                         teamB = teamB_bold.get_text().lower().strip()
@@ -255,10 +254,10 @@ def get_ended_matches(day, campionati, columns):
                     scoreA = scores[0].get_text()
                     scoreB = scores[1].get_text()
                     
-                    with open("../csv/stats" + str(day) + ".csv", "r") as f:
+                    with open(file_path + "/../csv/stats" + str(day) + ".csv", "r") as f:
                         lines = f.readlines()
                     
-                    with open("../csv/stats" + str(day) + ".csv", "w") as f:
+                    with open(file_path + "/../csv/stats" + str(day) + ".csv", "w") as f:
                         for line in lines:
                             if teamA in line and teamB in line:
                                 print("writing final score of: {}-{}".format(teamA, teamB))
@@ -277,9 +276,10 @@ def get_ended_matches(day, campionati, columns):
     
 
 def filter_matches(day, columns):
-    with open("../csv/stats" + str(day) + ".csv", "r") as f:
+    file_path = os.path.dirname(os.path.abspath(__file__))
+    with open(file_path + "/../csv/stats" + str(day) + ".csv", "r") as f:
         lines = f.readlines()
-    with open("../csv/stats" + str(day) + "final.csv", "w") as f:
+    with open(file_path + "/../csv/stats" + str(day) + "final.csv", "w") as f:
         for line in lines:
             l = len([i for i in line.split(',') if i != ""])
             if l == (len(columns) - 2) or l == len(columns):
@@ -287,7 +287,8 @@ def filter_matches(day, columns):
 
 
 def scrape_teams(campionato):
-    geckodriver_path = "./geckodriver"
+    file_path = os.path.dirname(os.path.abspath(__file__))
+    geckodriver_path = file_path + "/geckodriver"
     fire = webdriver.FirefoxProfile()
     fire.set_preference("http.response.timeout", 3)
     fire.set_preference("dom.max_script_run_time", 3)
@@ -375,7 +376,7 @@ def get_odds(url, driver, match):
 # for i in range(2,32):
 #     adapt_files(i)
 #adapt_files(2)
-# geckodriver_path = "./geckodriver"
+# geckodriver_path = file_path + "/geckodriver"
 # options = webdriver.FirefoxOptions()
 # options.add_argument('-headless')
 # fire = webdriver.FirefoxProfile()
@@ -397,7 +398,9 @@ def get_odds(url, driver, match):
 # 0 14 * 1-5,9-12 6,7
 # test
 
-# with open("../csv/stats1.csv", "r") as f:
+
+# file_path = os.path.dirname(os.path.abspath(__file__))
+# with open(file_path + "/../csv/stats1.csv", "r") as f:
 #     line = f.readline()
 #     columns = [col.replace("\n", "").replace(" ", "")
 #             for col in line.split(',')]
@@ -414,7 +417,7 @@ def get_odds(url, driver, match):
 #filter_matches(25, columns)
 
 
-        # geckodriver_path = "./geckodriver"
+        # geckodriver_path = file_path + "/geckodriver"
         # options = webdriver.FirefoxOptions()
         # options.add_argument('-headless')
         # fire = webdriver.FirefoxProfile()

@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 from selenium import webdriver
 from bs4 import BeautifulSoup
 import time
@@ -25,19 +23,19 @@ import sys
 
 
 if __name__ == "__main__":
-
-    files = glob.glob("../csv/stats*")
+    file_path = os.path.dirname(os.path.abspath(__file__))
+    files = glob.glob(file_path + "/../csv/stats*")
     day = len(files) + 1
     
-    with open("../csv/stats1.csv", "r") as f:
+    with open(file_path + "/../csv/stats1.csv", "r") as f:
         line = f.readline()
         columns = [col.replace("\n", "").replace(" ", "")
                    for col in line.split(',')]
-    with open("../csv/stats" + str(day) + ".csv", "w+") as f:
+    with open(file_path + "/../csv/stats" + str(day) + ".csv", "w+") as f:
         f.write(line)
 
     campionati = {}
-    with open("./teams.csv", "r") as f:
+    with open(file_path + "/teams.csv", "r") as f:
         champs = f.readlines()
         for champ in champs:
             line = champ.split(",")
@@ -50,19 +48,19 @@ if __name__ == "__main__":
         i += 1
 
     print(os.getpid())
-    
-    with open("./kill_process.sh", "w") as f:
+ 
+    with open(file_path + "/kill_process.sh", "w") as f:
         f.write("#!/bin/bash\nkill -15 {}".format(os.getpid()))
 
     signal.signal(signal.SIGTERM, partial( 
         ss.signal_handler, day, campionati, columns))
 
-    with open("./discard", "w") as f:
+    with open(file_path + "/discard", "w") as f:
         f.write("")
     previous_len = 0
     while True:
         try:
-            with open("./discard", "r") as f1:
+            with open(file_path + "/discard", "r") as f1:
                 discard_list = [line.replace("\n", "").strip() for line in f1.readlines()]
             print("getting matches statistics, don't stop the process...")
             ss.get_match_statistics(day, columns, campionati, i, discard_list)

@@ -9,7 +9,7 @@ from matches_predictor import utils
 
 def get_input_data():
     file_path = os.path.dirname(os.path.abspath(__file__))
-    all_files = sorted(glob.glob(file_path + "/../csv/*.csv"), key=lambda x: int(x[15:-4]))
+    all_files = sorted(glob.glob(file_path + "/../csv/*.csv"), key=lambda x: int(x[x.index('/csv/') + 10:-4]))
     input_df = pd.read_csv(all_files[-1], index_col=None, header=0)
     if 'Unnamed: 0' in input_df.columns:
         input_df.drop(columns=['Unnamed: 0'], inplace=True)
@@ -37,7 +37,7 @@ def drop_odds_col(df):
 def get_training_df():
     file_path = os.path.dirname(os.path.abspath(__file__))
     # import dataset
-    all_files = sorted(glob.glob(file_path + "/../csv/*.csv"), key=lambda x: int(x[15:-4]))
+    all_files = sorted(glob.glob(file_path + "/../csv/*.csv"), key=lambda x: int(x[x.index('/csv/') + 10:-4]))
     li = [pd.read_csv(filename, index_col=None, header=0) for filename in all_files[:-1]]
     df = pd.concat(li, axis=0, ignore_index=True)
     if 'Unnamed: 0' in df.columns:
@@ -62,8 +62,8 @@ def get_training_df():
     df['actual_result'] = np.where(df['home_score'] > df['away_score'], 1, np.where(df['home_score'] == df['away_score'], 2, 3))
     df['result_strongness'] = (df['home_score'] - df['away_score']) * df['minute']
 
-    df.reset_index(drop = True).to_csv(filepath + "/../dfs_pp/training_result.csv")
-    return df.reset_index(drop = True)
+    df.reset_index(drop=True).to_csv(file_path + "/../dfs_pp/training_result.csv")
+    return df.reset_index(drop=True)
 
 
 def process_input_data(input_df, training_df):

@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 from matches_predictor import result_utils
+import logging
 
 
 def get_live_predictions(reprocess_train_data=False,
@@ -15,7 +16,7 @@ def get_live_predictions(reprocess_train_data=False,
     else:
         train_result_df = pd.read_csv(file_path + "/../dfs_pp/training_result.csv", header=0)
     if 'Unnamed: 0' in train_result_df.columns:
-        train_result_df.drop(columns = ['Unnamed: 0'], inplace=True)
+        train_result_df.drop(columns=['Unnamed: 0'], inplace=True)
 
     input_result_df = result_utils.process_input_data(input_result_df, train_result_df)
 
