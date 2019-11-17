@@ -28,7 +28,8 @@ def setup():
 
 
 def get_match_statistics(day, columns, campionati, possesso_palla_index, discard_list):
-
+    
+    file_path = os.path.dirname(os.path.abspath(__file__))
     driver = setup()
     d = date.today().strftime("%d/%m/%Y")
     url = "https://www.diretta.it"
@@ -171,7 +172,7 @@ def get_ended_matches(day, campionati, columns):
         fire.set_preference("http.response.timeout", 3)
         fire.set_preference("dom.max_script_run_time", 3)
         driver = webdriver.Firefox(
-            executable_path=geckodriver_path, firefox_profile=fire, options = options)
+            executable_path=geckodriver_path, firefox_profile=fire, options=options)
         url = "https://www.diretta.it"
         driver.get(url)
         locale.setlocale(locale.LC_ALL, 'it_IT.UTF-8')

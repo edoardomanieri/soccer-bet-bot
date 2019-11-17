@@ -16,7 +16,7 @@ def setup():
     fire.set_preference("http.response.timeout", 3)
     fire.set_preference("dom.max_script_run_time", 3)
     driver = webdriver.Firefox(
-        executable_path=geckodriver_path, firefox_profile=fire)
+        executable_path=geckodriver_path, firefox_profile=fire, options=options)
     return driver
 
 
@@ -37,6 +37,7 @@ def get_matches_dict():
         teamA = teamA.strip()
         teamB = teamB.strip()
         match_dict[(teamA, teamB)] = href
+    driver.close()
     return match_dict
 
 
@@ -68,12 +69,13 @@ def get_live_odds(driver, d, teamA, teamB):
                     odds_res.append(quota)
                     if len(odds_res) == 5:
                         # prima over poi under
-                        tmp = odds_res[4]
-                        odds_res[4] = odds_res[5]
-                        odds_res[5] = tmp
+                        tmp = odds_res[3]
+                        odds_res[3] = odds_res[4]
+                        odds_res[4] = tmp
                         return odds_res
     except Exception:
         odds_res = [0, 0, 0, 0, 0]
+        print(traceback.format_exc())
         print("not captured odds")
         return odds_res
 
@@ -87,8 +89,11 @@ def get_match_href(d, teamA, teamB):
     return 0
 
 
-# driver = setup()
-# d = get_matches_dict(driver)
-# odds = get_live_odds()
-# time.sleep(5)
-# driver.close()
+def test():
+    d = get_matches_dict()
+    driver = setup()
+    odds = get_live_odds(driver, d, 'sarmiento', 'crucero del norte')
+    print(odds)
+    driver.close()
+
+# test()
