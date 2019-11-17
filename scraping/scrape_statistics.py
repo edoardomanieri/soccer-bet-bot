@@ -1,31 +1,22 @@
 from selenium import webdriver
 from bs4 import BeautifulSoup
 import time
-import io
-import numpy as np
-import pandas as pd
-import csv
-from fake_useragent import UserAgent
-from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 import os
-import glob
 from datetime import date, timedelta
 import traceback
 import signal
-from functools import partial
 import calendar
 import locale
-import joblib
+from scrape_eurobet import get_matches_dict, get_live_odds
 
-def get_match_statistics(day, columns, campionati, possesso_palla_index, discard_list):
+
+def setup():
     file_path = os.path.dirname(os.path.abspath(__file__))
-    d = date.today().strftime("%d/%m/%Y")
-
     geckodriver_path = file_path + "/geckodriver"
-
     options = webdriver.FirefoxOptions()
     options.add_argument('-headless')
     fire = webdriver.FirefoxProfile()
@@ -33,6 +24,13 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
     fire.set_preference("dom.max_script_run_time", 3)
     driver = webdriver.Firefox(
         executable_path=geckodriver_path, firefox_profile=fire, options=options)
+    return driver
+
+
+def get_match_statistics(day, columns, campionati, possesso_palla_index, discard_list):
+
+    driver = setup()
+    d = date.today().strftime("%d/%m/%Y")
     url = "https://www.diretta.it"
     f = open(file_path + "/../csv/stats" + str(day) + ".csv", "a")
     try:
@@ -42,28 +40,24 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
         matches = soup_initial_page.find_all("div", class_="event__match event__match--live event__match--oneLine") + \
             soup_initial_page.find_all(
                 "div", class_="event__match event__match--live event__match--last event__match--oneLine")
-        
+
+        match_live_dict = get_matches_dict()
         for match in matches:
             teamA = match.find(
                 "div", class_="event__participant event__participant--home").get_text().lower()
             teamB = match.find(
                 "div", class_="event__participant event__participant--away").get_text().lower()
-
             if (teamA not in [item for sublist in campionati.values() for item in sublist]) and (teamB not in [item for sublist in campionati.values() for item in sublist]):
                 continue
-
             if teamA in discard_list or teamB in discard_list:
                 continue
-
             t = match.find(
                 "div", class_="event__stage").get_text().lower().strip()
             t = t.replace("'", "")
-
             try:
                 int(t)
             except ValueError:
                 continue
-
             if int(t) in [0, 1, 2, 3, 4]:
                 continue
 
@@ -71,37 +65,31 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
             href = match['id']
             f.write(d + "," + href[4:] + "," + t +
                     "," + teamA + "," + teamB + ",")
-
             found = False
             for key, value in campionati.items():
                 if teamA in value or teamB in value:
                     f.write(key + ",")
                     found = True
                     break
-
             if not found:
                 f.write("other,")
-            
             documentNull = True
             trial = 0
             while documentNull:
                 try:
                     newurl = url + "/partita/" + href[4:] + "/#statistiche-partite;0"
                     driver.get(newurl)
-                    
                     j = 1
                     while driver.current_url != newurl and j != 5:
                         #print("old url...trying to reload on match: {}-{}, trial:{}".format(teamA, teamB, j))
                         driver.get(newurl)
                         time.sleep(1)
                         j += 1
-                    
                     if j == 5:
                         print("didn't get the statistics of: {}-{}".format(teamA, teamB))
 
                     WebDriverWait(driver, 10).until(
                         EC.presence_of_element_located((By.CLASS_NAME, "statBox")))
-
                     content_statistic_page = driver.page_source
                     soup_statistic_page = BeautifulSoup(content_statistic_page, "lxml")
                     documentNull = False
@@ -114,11 +102,10 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
                         with open("./discard", "a") as f3:
                             f3.write(teamA + "\n" + teamB + "\n")
                         raise
-            
 
             scores = match.find(
                     "div", class_="event__scores fontBold").find_all("span")
-            if scores != None:
+            if scores is not None:
                 score_team_A = scores[0].get_text()
                 score_team_B = scores[1].get_text()
 
@@ -130,10 +117,8 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
                     "span", class_="scoreboard")[1].get_text()
 
             f.write(score_team_A + "," + score_team_B)
-
             statistics = soup_statistic_page.find("div", class_="statBox").find(
                 "div", class_="statContent").find_all("div", class_="statRow")
-
             current_index = possesso_palla_index
             for stat in statistics:
                 home = stat.find(
@@ -153,15 +138,19 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
                         f.write(',0,0')
                         current_index += 2
                         continue
-                    
+
                     f.write(",nan")
                     current_index += 1
-            
+
                 f.write("," + home + "," + away)
                 current_index += 2
-            
+
+            # prematch odds
             odds = get_odds(url, driver, match)
-            f.write(",{},{},{},{},{}".format(odds[0],odds[1],odds[2],odds[3],odds[4]))
+            f.write(",{},{},{},{},{}".format(odds[0], odds[1], odds[2], odds[3], odds[4]))
+            # live odds from eurosport
+            live_odds = get_live_odds(driver, match_live_dict, teamA, teamB)
+            f.write(",{},{},{},{},{}".format(live_odds[0], live_odds[1], live_odds[2], live_odds[3], live_odds[4]))
             f.write("\n")
 
     except Exception:
@@ -170,8 +159,6 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
 
     f.close()
     driver.close()
-
-
 
 
 def get_ended_matches(day, campionati, columns):
@@ -187,16 +174,13 @@ def get_ended_matches(day, campionati, columns):
             executable_path=geckodriver_path, firefox_profile=fire, options = options)
         url = "https://www.diretta.it"
         driver.get(url)
-
         locale.setlocale(locale.LC_ALL, 'it_IT.UTF-8')
         d = date.today() - timedelta(days = 1)
         d_name = calendar.day_name[d.weekday()][:3].capitalize()
         d = d.strftime("%d/%m")
         total_day = d + " " + d_name
-        
         old_match = ""
         for index in range(2):
-
             if index == 1:
                 driver.find_element_by_xpath('//*[@id="live-table"]/div[1]/div[2]/div[1]/div').click()
                 trial = 0
@@ -211,21 +195,17 @@ def get_ended_matches(day, campionati, columns):
 
             content = driver.page_source
             soup = BeautifulSoup(content, "lxml")
-
             matches = soup.find_all("div", class_="event__match event__match--oneLine") + \
                 soup.find_all("div", class_="event__match event__match--last event__match--oneLine")
 
-            
-            #check that the program has changed date
+            # check that the program has changed date
             if old_match == "":
                 old_match = matches
             elif old_match == matches:
                 break
-            
+
             for match in matches:
-
                 stage = match.find("div", class_="event__stage").get_text().lower().strip()
-
                 if stage == "finale":
                     teamA_bold = match.find(
                         "div", class_="event__participant event__participant--home fontBold")
@@ -247,16 +227,16 @@ def get_ended_matches(day, campionati, columns):
 
                     if (teamA not in [item for sublist in campionati.values() for item in sublist]) and (teamB not in [item for sublist in campionati.values() for item in sublist]):
                         continue
-                    
+
                     #print("{}-{}".format(teamA, teamB))
                     scores = match.find(
                         "div", class_="event__scores fontBold").find_all("span")
                     scoreA = scores[0].get_text()
                     scoreB = scores[1].get_text()
-                    
+
                     with open(file_path + "/../csv/stats" + str(day) + ".csv", "r") as f:
                         lines = f.readlines()
-                    
+
                     with open(file_path + "/../csv/stats" + str(day) + ".csv", "w") as f:
                         for line in lines:
                             if teamA in line and teamB in line:
@@ -272,17 +252,14 @@ def get_ended_matches(day, campionati, columns):
         driver.close()
 
 
-
-    
-
 def filter_matches(day, columns):
     file_path = os.path.dirname(os.path.abspath(__file__))
     with open(file_path + "/../csv/stats" + str(day) + ".csv", "r") as f:
         lines = f.readlines()
     with open(file_path + "/../csv/stats" + str(day) + "final.csv", "w") as f:
         for line in lines:
-            l = len([i for i in line.split(',') if i != ""])
-            if l == (len(columns) - 2) or l == len(columns):
+            l1 = len([i for i in line.split(',') if i != ""])
+            if l1 == (len(columns) - 2) or l1 == len(columns):
                 f.write(line)
 
 
@@ -298,9 +275,7 @@ def scrape_teams(campionato):
     driver.get(url)
     content = driver.page_source
     soup = BeautifulSoup(content, "lxml")
-
     matches = soup.find_all("div", class_="leagueTable__teams")
-
     f = open("./teams.csv", "a")
     for match in matches:
         teamA = match.find(
@@ -321,7 +296,6 @@ def signal_handler(day, campionati, columns, signalNumber, frame):
     os.kill(os.getpid(), signal.SIGKILL)
 
 
-
 def get_odds(url, driver, match):
     try:
         href = match['id']
@@ -337,7 +311,7 @@ def get_odds(url, driver, match):
         odds = soup_odds_page.find_all("td", class_="kx")
         odds_res = [odds[i].get_text() for i in range(3)]
     except Exception:
-        odds_res = [0,0,0]
+        odds_res = [0, 0, 0]
         print("not captured odds result")
     try:
         newurl = url + "/partita/" + href[4:] + "/#comparazione-quote;over-under;finale"
@@ -351,31 +325,30 @@ def get_odds(url, driver, match):
         soup_odds_page = BeautifulSoup(content_odds_page, "lxml")
         odds = soup_odds_page.find("table", id="odds_ou_2.5").find_all("td", class_="kx")
         odds_goals = [odds[i].get_text() for i in range(2)]
-
         return odds_res + odds_goals
     except Exception:
         print("not captured odds goals")
-        return odds_res + [0,0]
+        return odds_res + [0, 0]
 
 
-# def adapt_files(day):
-#     with open("/home/edoardo/Desktop/csv/stats1.csv", "r") as f:
-#         header = f.readline()
-#     with open("/home/edoardo/Desktop/csv/stats" + str(day) + ".csv", "r") as f:
-#         lines = f.readlines()
-#     with open("/home/edoardo/Desktop/csv/stats" + str(day) + ".csv", "w") as f:
-#         f.write(header)
-#         for line in lines[1:]:
-#             elements = line.strip('\n').split(',')
-#             for el in elements[:-2]:
-#                 f.write(el + ',')
-#             f.write('0,0,0,0,0,')
-#             f.write(elements[-2] + ',' + elements[-1] + '\n')
+def adapt_files(day):
+    with open("/home/edoardo/Desktop/Betting_live/matches_predictor/csv/stats1.csv", "r") as f:
+        header = f.readline()
+    with open("/home/edoardo/Desktop/Betting_live/matches_predictor/csv/stats" + str(day) + ".csv", "r") as f:
+        lines = f.readlines()
+    with open("/home/edoardo/Desktop/Betting_live/matches_predictor/csv/stats" + str(day) + ".csv", "w") as f:
+        f.write(header)
+        for line in lines[1:]:
+            elements = line.strip('\n').split(',')
+            for el in elements[:-2]:
+                f.write(el + ',')
+            f.write('0,0,0,0,0,')
+            f.write(elements[-2] + ',' + elements[-1] + '\n')
 
 
-# for i in range(2,32):
+# for i in range(2,40):
 #     adapt_files(i)
-#adapt_files(2)
+# adapt_files(2)
 # geckodriver_path = file_path + "/geckodriver"
 # options = webdriver.FirefoxOptions()
 # options.add_argument('-headless')

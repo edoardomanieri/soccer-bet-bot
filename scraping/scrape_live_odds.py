@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 from selenium import webdriver
 from bs4 import BeautifulSoup
 import time
@@ -24,8 +22,8 @@ import joblib
 from selenium.webdriver.support.ui import Select
 
 
-
-geckodriver_path = "./geckodriver"
+file_path = os.path.dirname(os.path.abspath(__file__))
+geckodriver_path = file_path + "/geckodriver"
 options = webdriver.FirefoxOptions()
 options.add_argument('-headless')
 fire = webdriver.FirefoxProfile()
@@ -461,3 +459,5 @@ def get_odds(url, driver, match):
         #     print(matches[0])
         
         # driver.close()
+
+
