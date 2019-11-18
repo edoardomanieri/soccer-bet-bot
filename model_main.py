@@ -1,6 +1,7 @@
 from matches_predictor import pipeline
 import numpy as np
 
+
 def main():
     final_df = pipeline.run(True, True, True, True)
     final_df = final_df[final_df['minute'] < 85]

@@ -16,21 +16,36 @@ def get_input_data():
     return input_df.sort_values(by=['id_partita', 'minute'], ascending=[True, False]).groupby(['id_partita']).first().reset_index() 
 
 
-def normalize_odds(input_df):
+def normalize_prematch_odds(input_df):
     tmp = (1 - ((1 / input_df['odd_over']) + (1 / input_df['odd_under']))) / 2
     input_df['odd_over'] = (1 / input_df['odd_over']) + tmp
     input_df['odd_under'] = (1 / input_df['odd_under']) + tmp
     return input_df
 
 
-def pop_input_odds_data(input_df):
-    odds_input = input_df.loc[:,['id_partita', 'minute', 'odd_under', 'odd_over']]
+def pop_input_prematch_odds_data(input_df):
+    prematch_odds_input = input_df.loc[:,['id_partita', 'minute', 'odd_under', 'odd_over']]
     input_df.drop(columns=['odd_1', 'odd_2', 'odd_X', 'odd_over', 'odd_under'], inplace = True)
-    return odds_input
+    return prematch_odds_input
+
+
+def pop_input_live_odds_data(input_df):
+    live_odds_input = input_df.loc[:,['id_partita', 'minute', 'live_odd_under', 'live_odd_over']]
+    input_df.drop(columns=['live_odd_1', 'live_odd_2', 'live_odd_X', 'live_odd_over', 'live_odd_under'], inplace=True)
+    return live_odds_input
+
+
+def drop_prematch_odds_col(df):
+    return df.drop(columns=['odd_over', 'odd_under', 'odd_1', 'odd_X', 'odd_2'])
+
+
+def drop_live_odds_col(df):
+    return df.drop(columns=['live_odd_over', 'live_odd_under', 'live_odd_1', 'live_odd_X', 'live_odd_2'])
 
 
 def drop_odds_col(df):
-    return df.drop(columns = ['odd_over', 'odd_under','odd_1', 'odd_X', 'odd_2'])
+    df = drop_prematch_odds_col(df)
+    return drop_live_odds_col(df)
 
 
 def get_training_df():
@@ -41,7 +56,7 @@ def get_training_df():
     df = pd.concat(li, axis=0, ignore_index=True)
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
 
-    #drop odds variables
+    #drop prematch_odds variables
     df = drop_odds_col(df)
 
     #change data type
@@ -106,10 +121,10 @@ def get_complete_predictions_table(input_df, predictions, probabilities):
     return final_df
 
 
-def get_prior_posterior_predictions(input_pred_df, input_odds_df):
+def get_prior_posterior_predictions(input_pred_df, input_prematch_odds_df):
     # al 15 minuto probabilità pesate 50-50
     rate = 0.6 / 90
-    res_df = input_pred_df.merge(input_odds_df, on = ['id_partita', 'minute'])
+    res_df = input_pred_df.merge(input_prematch_odds_df, on = ['id_partita', 'minute'])
     res_df['probability_final_over'] = ((0.4 + (rate*res_df['minute'])) * res_df['probability_over'])\
                                          + ((0.6 - (rate*res_df['minute'])) * res_df['odd_over'])
     res_df['probability_final_under'] = ((0.4 + (rate*res_df['minute'])) * (1-res_df['probability_over']))\

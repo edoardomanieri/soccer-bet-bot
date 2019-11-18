@@ -9,7 +9,8 @@ from xgboost import XGBClassifier, XGBRegressor
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, mean_squared_error
-import model_result, utils
+from matches_predictor import result_utils, goals_utils, utils
+
 
 def process_test_data(training_df, test_df):
     #introduce target variables
@@ -19,15 +20,15 @@ def process_test_data(training_df, test_df):
 
     test_df['actual_result'] = np.where(test_df['home_score'] > test_df['away_score'], 1, np.where(test_df['home_score'] == test_df['away_score'], 2, 3))
     test_df['result_strongness'] = (test_df['home_score'] - test_df['away_score']) * test_df['minute']
-    
+
     test_df['avg_camp_goals'] = 0
     campionati = test_df['campionato'].unique()
 
     for camp in campionati:
         if camp not in training_df['campionato'].unique():
-            test_df.loc[test_df['campionato'] == camp,'avg_camp_goals'] = training_df['avg_camp_goals'].mean()
+            test_df.loc[test_df['campionato'] == camp, 'avg_camp_goals'] = training_df['avg_camp_goals'].mean()
         else:
-            test_df.loc[test_df['campionato'] == camp,'avg_camp_goals'] = training_df.loc[training_df['campionato'] == camp,:].reset_index()['avg_camp_goals'][0]
+            test_df.loc[test_df['campionato'] == camp, 'avg_camp_goals'] = training_df.loc[training_df['campionato'] == camp,:].reset_index()['avg_camp_goals'][0]
 
     test_df['home_avg_goal_fatti'] = 0
     test_df['away_avg_goal_fatti'] = 0
@@ -51,10 +52,14 @@ def process_test_data(training_df, test_df):
 
 
 #import dataset
-all_files = sorted(glob.glob("../../csv/*.csv"), key = lambda x: int(x[12:-4]))
+all_files = sorted(glob.glob("../../csv/*.csv"), key=lambda x: int(x[12:-4]))
 li = [pd.read_csv(filename, index_col=None, header=0) for filename in all_files]
 df = pd.concat(li, axis=0, ignore_index=True)
+if 'Unnamed: 0' in df.columns:
+    df.drop(columns=['Unnamed: 0'], inplace=True)
 cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
+
+df = result_utils.normalize_prematch_odds(df)
 
 #drop odds col
 df = model_result.drop_odds_col(df)
@@ -64,12 +69,21 @@ for col in df.columns:
     if col not in cat_col:
         df[col] = pd.to_numeric(df[col])
 
+# nel test ci devono essere partite con le live odds (o questo o quello sotto)
+live_odds_mask = df['live_odd_1'] != 0
+id_partita_live_odds = df.loc[live_odds_mask, 'id_partita'].unique()
+if len(id_partita_live_odds) > len(df['id_partita'].unique()) // 4:
+    id_partita_test = np.random.choice(id_partita_live_odds, size=len(df['id_partita'].unique()) // 4, replace=False)
+else:
+    id_partita_test = id_partita_live_odds
 
-#splittare test and train in modo che nel train ci siano alcune partite, nel test altre
-id_partita_test = np.random.choice(df['id_partita'].unique(), size = len(df['id_partita'].unique()) // 4, replace = False)
+# splittare test and train in modo che nel train ci siano alcune partite, nel test altre
+id_partita_test = np.random.choice(df['id_partita'].unique(), size=len(df['id_partita'].unique()) // 4, replace=False)
+
+# splitting
 test_mask = df['id_partita'].isin(id_partita_test)
-test = df.loc[test_mask, :].copy(deep =  True)
-train = df.loc[~(test_mask), :].copy(deep = True)
+test = df.loc[test_mask, :].copy(deep=True)
+train = df.loc[~(test_mask), :].copy(deep=True)
 
 #nan imputation
 train = utils.nan_imputation(train, train)

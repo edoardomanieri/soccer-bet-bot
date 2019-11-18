@@ -16,13 +16,19 @@ def get_input_data():
     return input_df.sort_values(by=['id_partita', 'minute'], ascending=[True, False]).groupby(['id_partita']).first().reset_index() 
 
 
-def pop_input_odds_data(input_df):
-    odds_input = input_df.loc[:, ['id_partita', 'minute', 'odd_1', 'odd_X', 'odd_2']]
+def pop_input_prematch_odds_data(input_df):
+    prematch_odds_input = input_df.loc[:, ['id_partita', 'minute', 'odd_1', 'odd_X', 'odd_2']]
     input_df.drop(columns=['odd_1', 'odd_X', 'odd_2', 'odd_under', 'odd_over'], inplace=True)
-    return odds_input
+    return prematch_odds_input
 
 
-def normalize_odds(input_df):
+def pop_input_live_odds_data(input_df):
+    live_odds_input = input_df.loc[:, ['id_partita', 'minute', 'live_odd_1', 'live_odd_X', 'live_odd_2']]
+    input_df.drop(columns=['live_odd_1', 'live_odd_2', 'live_odd_X', 'live_odd_over', 'live_odd_under'], inplace=True)
+    return live_odds_input
+
+
+def normalize_prematch_odds(input_df):
     tmp = (1 - ((1 / input_df['odd_1']) + (1 / input_df['odd_X']) + (1 / input_df['odd_2']))) / 3
     input_df['odd_1'] = (1 / input_df['odd_1']) + tmp
     input_df['odd_X'] = (1 / input_df['odd_X']) + tmp
@@ -30,8 +36,17 @@ def normalize_odds(input_df):
     return input_df
 
 
+def drop_prematch_odds_col(df):
+    return df.drop(columns=['odd_over', 'odd_under', 'odd_1', 'odd_X', 'odd_2'])
+
+
+def drop_live_odds_col(df):
+    return df.drop(columns=['live_odd_over', 'live_odd_under', 'live_odd_1', 'live_odd_X', 'live_odd_2'])
+
+
 def drop_odds_col(df):
-    return df.drop(columns=['odd_over', 'odd_under','odd_1', 'odd_X', 'odd_2'])
+    df = drop_prematch_odds_col(df)
+    return drop_live_odds_col(df)
 
 
 def get_training_df():
@@ -44,7 +59,7 @@ def get_training_df():
         df.drop(columns=['Unnamed: 0'], inplace=True)
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
 
-    # drop odds variables
+    # drop prematch_odds variables
     df = drop_odds_col(df)
 
     # change data type
@@ -72,9 +87,9 @@ def process_input_data(input_df, training_df):
         input_df.drop(columns=['home_final_score', 'away_final_score'], inplace=True)
     input_df = utils.nan_imputation(training_df, input_df)
 
-    #introduce target variables
+    # introduce target variables
     input_df['actual_result'] = np.where(input_df['home_score'] > input_df['away_score'], 1, np.where(input_df['home_score'] == input_df['away_score'], 2, 3))
-    input_df['result_strongness'] = (input_df['home_score'] - input_df['away_score']) * input_df['minute']   
+    input_df['result_strongness'] = (input_df['home_score'] - input_df['away_score']) * input_df['minute']
     return input_df
 
 
@@ -88,7 +103,6 @@ def train_and_save_model(train):
     outcome_cols = ['home_final_score', 'away_final_score', 'final_total_goals']
     train_y = train['result'].values
     train_X = train.drop(columns=['result'] + cat_col + outcome_cols)
-
     xgb = XGBClassifier(n_estimators=2000)
     xgb.fit(train_X, train_y)
     joblib.dump(xgb, file_path + "/../models_pp/result.joblib")
@@ -126,7 +140,7 @@ def get_complete_predictions_table_old(input_df,predictions,probabilities,thresh
     input_df['predictions'] = predictions
     input_df['probability_result'] = np.max(probabilities, axis=1)
     prob_mask = input_df['probability'] >= threshold
-    final_df = input_df.loc[prob_mask, ['id_partita','home', 'away', 'minute', 'home_score',
+    final_df = input_df.loc[prob_mask, ['id_partita', 'home', 'away', 'minute', 'home_score',
          'away_score', 'probability','predictions']]\
              .sort_values(by = ['probability', 'minute'], ascending=False, inplace=False)
     return final_df
@@ -137,21 +151,23 @@ def get_complete_predictions_table(input_df, predictions, probabilities, thresho
     input_df['probability_1'] = probabilities[:, 0]
     input_df['probability_X'] = probabilities[:, 1]
     input_df['probability_2'] = probabilities[:, 2]
-    final_df = input_df.loc[:, ['id_partita','home', 'away', 'minute', 'home_score',
-         'away_score', 'probability_1','probability_X', 'probability_2', 'predictions']]\
-             .sort_values(by = ['minute'], ascending=False, inplace=False)
+    final_df = input_df.loc[:, ['id_partita', 'home', 'away', 'minute', 'home_score',
+         'away_score', 'probability_1', 'probability_X', 'probability_2', 'predictions']]\
+             .sort_values(by=['minute'], ascending=False, inplace=False)
     return final_df
 
 
-def get_prior_posterior_predictions(input_pred_df, input_odds_df):
+def get_prior_posterior_predictions(input_pred_df, input_prematch_odds_df):
     # al 15 minuto probabilità pesate 50-50
     rate = 0.6 / 90
-    res_df = input_pred_df.merge(input_odds_df, on = ['id_partita', 'minute'])
+    res_df = input_pred_df.merge(input_prematch_odds_df, on=['id_partita', 'minute'])
     res_df['probability_final_result_1'] = ((0.4 + (rate*res_df['minute'])) * res_df['probability_1'])\
                                          + ((0.6 - (rate*res_df['minute'])) * res_df['odd_1'])
     res_df['probability_final_result_X'] = ((0.4 + (rate*res_df['minute'])) * res_df['probability_X'])\
                                          + ((0.6 - (rate*res_df['minute'])) * res_df['odd_X'])
     res_df['probability_final_result_2'] = ((0.4 + (rate*res_df['minute'])) * res_df['probability_2'])\
                                          + ((0.6 - (rate*res_df['minute'])) * res_df['odd_2'])
-    res_df['prediction_final_result'] = np.argmax(res_df[['probability_final_result_1','probability_final_result_X', 'probability_final_result_2']].values, axis = 1) + 1
-    return res_df                    
+    res_df['prediction_final_result'] = np.argmax(res_df[['probability_final_result_1',
+                                                          'probability_final_result_X',
+                                                          'probability_final_result_2']].values, axis=1) + 1
+    return res_df
