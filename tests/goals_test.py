@@ -1,13 +1,19 @@
 import numpy as np
 import pandas as pd
 import glob
-from sklearn.metrics import accuracy_score, mean_squared_error
-from matches_predictor import result_utils, goals_utils, utils
+from sklearn.metrics import accuracy_score
+from matches_predictor import goals_utils, utils
 from matches_predictor.classifiers import xgb
+from sklearn.preprocessing import MinMaxScaler
+from keras.layers import LSTM, Masking
+from keras.layers import Dense, Flatten, Dropout
+from keras.models import Sequential
+from keras.utils import to_categorical
+
 pd.set_option('display.float_format', lambda x: '%.3f' % x)
 
 
-def get_ids_for_splitting(df, prematch_odds=True, live_odds=True):
+def get_ids_for_test(df, prematch_odds=True, live_odds=True):
     if prematch_odds and live_odds:
         total_odds_mask = (df['live_odd_1'] != 0) & (df['odd_1'] != 0)
         id_partita_total_odds = df.loc[total_odds_mask, 'id_partita'].unique()
@@ -48,92 +54,114 @@ for col in df.columns:
     if col not in cat_col:
         df[col] = pd.to_numeric(df[col])
 
-id_partita_test = get_ids_for_splitting(df,prematch_odds=True, live_odds=False)
+df = goals_utils.nan_drop_train(df)
+id_partita_test = get_ids_for_test(df, prematch_odds=True, live_odds=False)
 
-# splitting
+# split test and train
 test_mask = df['id_partita'].isin(id_partita_test)
 test = df.loc[test_mask, :].copy(deep=True)
 train = df.loc[~(test_mask), :].copy(deep=True)
 
 # nan imputation
-train = utils.nan_imputation(train, train)
-test = utils.nan_imputation(train, test)
+train = utils.nan_impute_train(train)
+test = utils.nan_impute_test(train, test)
+
+# drop too easy predictions
+under_80_mask = test['minute'] <= 80
+test = test.loc[under_80_mask, :]
 
 # adding outcome columns
-train['result'] = np.where(train['home_final_score'] > train['away_final_score'], 1, np.where(train['home_final_score'] == train['away_final_score'], 2, 3))
-train['final_total_goals'] = train['home_final_score'] + train['away_final_score']
+train['final_uo'] = np.where(train['home_final_score'] + train['away_final_score'] > 2, 0, 1)
 
 # adding additional information
 train['actual_total_goals'] = train['home_score'] + train['away_score']
-train['actual_result'] = np.where(train['home_score'] > train['away_score'], 1, np.where(train['home_score'] == train['away_score'], 2, 3))
-train['result_strongness'] = (train['home_score'] - train['away_score']) * train['minute']
+train['over_strongness'] = (train['home_score'] + train['away_score']) * (90 - train['minute'])
 
 # adding outcome columns
-test['result'] = np.where(test['home_final_score'] > test['away_final_score'], 1, np.where(test['home_final_score'] == test['away_final_score'], 2, 3))
-test['final_total_goals'] = test['home_final_score'] + test['away_final_score']
+test['final_uo'] = np.where(test['home_final_score'] + test['away_final_score'] > 2, 0, 1)
 
 # adding additional information
 test['actual_total_goals'] = test['home_score'] + test['away_score']
-test['actual_result'] = np.where(test['home_score'] > test['away_score'], 1, np.where(test['home_score'] == test['away_score'], 2, 3))
-test['result_strongness'] = (test['home_score'] - test['away_score']) * test['minute']
+test['over_strongness'] = (test['home_score'] + test['away_score']) * (90 - test['minute'])
 
-###############################1x2#####################################
-test = result_utils.normalize_prematch_odds(test)
-test_result_prematch_odds = result_utils.pop_input_prematch_odds_data(test)
-test_result_live_odds = result_utils.pop_input_live_odds_data(test)
-train = result_utils.drop_odds_col(train)
+test = goals_utils.normalize_prematch_odds(test)
+test_goals_prematch_odds = goals_utils.pop_input_prematch_odds_data(test)
+test_goals_live_odds = goals_utils.pop_input_live_odds_data(test)
+train = goals_utils.drop_odds_col(train)
 train.reset_index(drop=True, inplace=True)
 test.reset_index(drop=True, inplace=True)
 
-outcome_cols = ['home_final_score', 'away_final_score', 'final_total_goals', 'result']
-test_y = test[['id_partita', 'minute', 'result']]
+outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
+test_y = test[['id_partita', 'minute', 'final_uo']]
 test.drop(columns=outcome_cols, inplace=True)
 test_X = test.drop(columns=cat_col)
 
-train_y = train['result'].values
+train_y = train['final_uo'].values
 train_X = train.drop(columns=outcome_cols + cat_col)
 
-model, accuracy = xgb(train_X, train_y, test_X, test_y['result'].values)
+model, accuracy = xgb(train_X, train_y, test_X, test_y['final_uo'].values)
 print(accuracy)
 
-predictions_result, probabilities_result = result_utils.get_predict_proba(model, test)
-predictions_result_df = result_utils.get_complete_predictions_table(test, predictions_result,
-    probabilities_result, threshold=0)
-predictions_result_df = result_utils.get_prior_posterior_predictions(predictions_result_df, test_result_prematch_odds)
+predictions_goals, probabilities_goals = goals_utils.get_predict_proba(model, test)
+predictions_goals_df = goals_utils.get_complete_predictions_table(test, predictions_goals,
+                                                                  probabilities_goals)
+predictions_goals_df = goals_utils.get_prior_posterior_predictions(predictions_goals_df, test_goals_prematch_odds)
 
 
 # test settings
-predictions_result_df = predictions_result_df.merge(test_y)
-predictions_result_df
-predictions_final = predictions_result_df['prediction_final_result']
-test_y = predictions_result_df['result']
+predictions_goals_df = predictions_goals_df.merge(test_y)
+predictions_final = predictions_goals_df['prediction_final_over']
+test_y = predictions_goals_df['final_uo']
 accuracy_score(test_y, predictions_final)
+predictions_goals_df.loc[predictions_goals_df['minute'] < 60, :]
 
-predictions_result_df.loc[predictions_result_df['minute'] < 60, :]
+# preprocessing lstm train
+special_value = -2
+outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
+train.sort_values(by=['minute'], inplace=True)
+gb = train.groupby(['id_partita'])
+
+test.sort_values(by=['minute'], inplace=True)
+gt = test.groupby(['id_partita'])
+
+mx = max(gb['id_partita'].size().max(), gt['id_partita'].size().max())
+not_ts_cols = outcome_cols + cat_col + ['minute']
+
+n_cols = len(train.columns) - len(not_ts_cols)
+train_X = np.array([np.pad(frame[[col for col in train.columns if col not in not_ts_cols]].values,
+                    pad_width=[(0, mx-len(frame)), (0, 0)],
+                    mode='constant',
+                    constant_values=special_value)
+                    for _,frame in gb]).reshape(-1, mx, n_cols)
+scaler = MinMaxScaler(feature_range=(0, 1))
+train_X = scaler.fit_transform(train_X.reshape(-1, n_cols)).reshape(-1, mx, n_cols)
+train_y = gb.first()['final_uo'].values
+train_y = to_categorical(train_y)
 
 
-########################total_goals##################
-test_y = test['final_total_goals'].values
-test_X = test.drop(columns = drop_y_column)
-#test_X = test_X.drop(columns = tmp_y_col_to_be_dropped)
+# preprocessing test
+test_X = np.array([np.pad(frame[[col for col in test.columns if col not in not_ts_cols]].values,
+                    pad_width=[(0, mx-len(frame)), (0, 0)],
+                    mode='constant',
+                    constant_values=special_value)
+                    for _,frame in gt]).reshape(-1, mx, n_cols)
+scaler = MinMaxScaler(feature_range=(0, 1))
+test_X = scaler.fit_transform(test_X.reshape(-1, n_cols)).reshape(-1, mx, n_cols)
+test_y = gt.first()['final_uo'].values
+test_y = to_categorical(test_y)
 
-train_y = train['final_total_goals'].values
-train_X = train.drop(columns = drop_y_column)
-#train_X = train_X.drop(columns = tmp_y_col_to_be_dropped)
 
-xgb = XGBRegressor(n_estimators = 2000)
-xgb.fit(train_X, train_y)
-predictions = xgb.predict(test_X)
-mean_squared_error(test_y, predictions)
+model = Sequential()
+model.add(Masking(mask_value=special_value, input_shape=(mx, n_cols)))
+model.add(LSTM(30, input_shape=(mx, n_cols), return_sequences=True))
+model.add(Dropout(0.1))
+model.add(LSTM(20, return_sequences=True))
+model.add(Dropout(0.1))
+model.add(LSTM(10, return_sequences=False))
+model.add(Dropout(0.1))
+model.add(Dense(2, activation='softmax'))
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+print(model.summary())
 
-test['predictions'] = predictions
-test.loc[test['predictions'] < test['actual_total_goals'],'predictions'] = test['actual_total_goals']
-test['true_values'] = test_y
-new_df = test.merge(df, how = "left")
-minute_max_mask = new_df['minute'] < 60
-minute_min_mask = new_df['minute'] > 20
-
-final_df = new_df.loc[(minute_max_mask & minute_min_mask), ['id_partita','home', 'away', 'minute', 'home_score', 'away_score','home_final_score', 'away_final_score', 'true_values', 'predictions']]
-len(final_df[final_df['predictions'] == final_df['true_values']]) /len(final_df)
-final_df.sort_values(by = ['id_partita', 'minute'], ascending = [True, False]).groupby(['id_partita']).first().reset_index() 
-
+history = model.fit(train_X, train_y, validation_data=(test_X, test_y), batch_size=16, epochs=30,  verbose=1)
+history.history

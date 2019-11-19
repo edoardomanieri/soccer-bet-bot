@@ -7,6 +7,38 @@ import joblib
 from matches_predictor import utils
 
 
+def nan_drop_train(df, thresh='half'):
+    # eliminate duplicate rows
+    subset = [col for col in df.columns if col != 'minute']
+    df.drop_duplicates(subset=subset, inplace=True)
+
+    # eliminate rows with a lot of nans
+    if thresh == 'half':
+        thresh = len(df.columns) // 2
+    df.dropna(axis=0, thresh=thresh, inplace=True)
+
+    # eliminate rows with nans on target or on important columns
+    important_cols = ['home_final_score', 'away_final_score', 'id_partita']
+    df.dropna(axis=0, subset=important_cols, how='any', inplace=True)
+    return df
+
+
+def nan_drop_test(df, thresh='half'):
+    # eliminate duplicate rows
+    subset = [col for col in df.columns if col != 'minute']
+    df.drop_duplicates(subset=subset, inplace=True)
+
+    # eliminate rows with a lot of nans
+    if thresh == 'half':
+        thresh = len(df.columns) // 2
+    df.dropna(axis=0, thresh=thresh, inplace=True)
+
+    # eliminate rows with nans on target or on important columns
+    important_cols = ['id_partita']
+    df.dropna(axis=0, subset=important_cols, how='any', inplace=True)
+    return df
+
+
 def get_input_data():
     file_path = os.path.dirname(os.path.abspath(__file__))
     all_files = sorted(glob.glob(file_path + "/../csv/*.csv"), key=lambda x: int(x[x.index('/csv/') + 10:-4]))
@@ -68,13 +100,13 @@ def get_training_df():
             df[col] = pd.to_numeric(df[col])
 
     # nan imputation
-    df = utils.nan_imputation(df, df)
+    df = nan_drop_train(df)
+    df = utils.nan_impute_train(df)
 
     # adding outcome columns
     df['result'] = np.where(df['home_final_score'] > df['away_final_score'], 1, np.where(df['home_final_score'] == df['away_final_score'], 2, 3))
-    df['final_total_goals'] = df['home_final_score'] + df['away_final_score']
 
-    df['actual_result'] = np.where(df['home_score'] > df['away_score'], 1, np.where(df['home_score'] == df['away_score'], 2, 3))
+    # df['actual_result'] = np.where(df['home_score'] > df['away_score'], 1, np.where(df['home_score'] == df['away_score'], 2, 3))
     df['result_strongness'] = (df['home_score'] - df['away_score']) * df['minute']
 
     df.reset_index(drop=True).to_csv(file_path + "/../dfs_pp/training_result.csv")
@@ -82,25 +114,25 @@ def get_training_df():
 
 
 def process_input_data(input_df, training_df):
-
     if 'home_final_score' in input_df.columns and 'away_final_score' in input_df.columns:
         input_df.drop(columns=['home_final_score', 'away_final_score'], inplace=True)
-    input_df = utils.nan_imputation(training_df, input_df)
+
+    input_df = nan_drop_test(input_df)
+    input_df = utils.nan_impute_test(training_df, input_df)
 
     # introduce target variables
-    input_df['actual_result'] = np.where(input_df['home_score'] > input_df['away_score'], 1, np.where(input_df['home_score'] == input_df['away_score'], 2, 3))
+    # input_df['actual_result'] = np.where(input_df['home_score'] > input_df['away_score'], 1, np.where(input_df['home_score'] == input_df['away_score'], 2, 3))
     input_df['result_strongness'] = (input_df['home_score'] - input_df['away_score']) * input_df['minute']
     return input_df
 
 
-#drop_y_column = ['home_final_score', 'away_final_score', 'result', 'final_total_goals']
 def train_and_save_model(train):
     """
     Create model and save it with joblib
     """
     file_path = os.path.dirname(os.path.abspath(__file__))
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
-    outcome_cols = ['home_final_score', 'away_final_score', 'final_total_goals']
+    outcome_cols = ['home_final_score', 'away_final_score']
     train_y = train['result'].values
     train_X = train.drop(columns=['result'] + cat_col + outcome_cols)
     xgb = XGBClassifier(n_estimators=2000)

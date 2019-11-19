@@ -74,7 +74,7 @@ def get_live_odds(driver, d, teamA, teamB):
                         odds_res[4] = tmp
                         return odds_res
     except Exception:
-        odds_res = [0, 0, 0, 0, 0]
+        odds_res = [-1, -1, -1, -1, -1]
         print(traceback.format_exc())
         print("not captured odds")
         return odds_res
