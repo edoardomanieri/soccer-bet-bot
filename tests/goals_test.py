@@ -4,11 +4,6 @@ import glob
 from sklearn.metrics import accuracy_score
 from matches_predictor import goals_utils, utils
 from matches_predictor.classifiers import xgb
-from sklearn.preprocessing import MinMaxScaler
-from keras.layers import LSTM, Masking
-from keras.layers import Dense, Flatten, Dropout
-from keras.models import Sequential
-from keras.utils import to_categorical
 
 pd.set_option('display.float_format', lambda x: '%.3f' % x)
 
@@ -55,7 +50,7 @@ for col in df.columns:
         df[col] = pd.to_numeric(df[col])
 
 df = goals_utils.nan_drop_train(df)
-id_partita_test = get_ids_for_test(df, prematch_odds=True, live_odds=False)
+id_partita_test = get_ids_for_test(df, prematch_odds=True, live_odds=True)
 
 # split test and train
 test_mask = df['id_partita'].isin(id_partita_test)
@@ -65,6 +60,7 @@ train = df.loc[~(test_mask), :].copy(deep=True)
 # nan imputation
 train = utils.nan_impute_train(train)
 test = utils.nan_impute_test(train, test)
+len(test)
 
 # drop too easy predictions
 under_80_mask = test['minute'] <= 80
@@ -107,61 +103,54 @@ predictions_goals_df = goals_utils.get_complete_predictions_table(test, predicti
                                                                   probabilities_goals)
 predictions_goals_df = goals_utils.get_prior_posterior_predictions(predictions_goals_df, test_goals_prematch_odds)
 
-
-# test settings
+# tests settings
 predictions_goals_df = predictions_goals_df.merge(test_y)
 predictions_final = predictions_goals_df['prediction_final_over']
 test_y = predictions_goals_df['final_uo']
 accuracy_score(test_y, predictions_final)
 predictions_goals_df.loc[predictions_goals_df['minute'] < 60, :]
 
-# preprocessing lstm train
-special_value = -2
-outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
-train.sort_values(by=['minute'], inplace=True)
-gb = train.groupby(['id_partita'])
+lo_df = predictions_goals_df.merge(test_goals_live_odds, on=['minute', 'id_partita'])
 
-test.sort_values(by=['minute'], inplace=True)
-gt = test.groupby(['id_partita'])
+t = 0
+for index, row in lo_df.iterrows():
+    if row['probability_final_under'] >= 0.75 or row['probability_final_under'] <= 0.25:
+        if row['final_uo'] == row['prediction_final_over']:
+            if row['prediction_final'] == 'under':
+                if row['live_odd_under'] > 1:
+                    t += (row['live_odd_under'] - 1)
+            else:
+                if row['live_odd_over'] > 1:
+                    t += (row['live_odd_over'] - 1)
+        else:
+            t -= 1
+print(t)
 
-mx = max(gb['id_partita'].size().max(), gt['id_partita'].size().max())
-not_ts_cols = outcome_cols + cat_col + ['minute']
+cd tests
+import models_test as md
+cd ..
 
-n_cols = len(train.columns) - len(not_ts_cols)
-train_X = np.array([np.pad(frame[[col for col in train.columns if col not in not_ts_cols]].values,
-                    pad_width=[(0, mx-len(frame)), (0, 0)],
-                    mode='constant',
-                    constant_values=special_value)
-                    for _,frame in gb]).reshape(-1, mx, n_cols)
-scaler = MinMaxScaler(feature_range=(0, 1))
-train_X = scaler.fit_transform(train_X.reshape(-1, n_cols)).reshape(-1, mx, n_cols)
-train_y = gb.first()['final_uo'].values
-train_y = to_categorical(train_y)
+train_X, train_y = md.preprocessing_train(train, test, cat_col)
+test_X, test_y, test, mx, n_cols = md.preprocessing_test(train, test, cat_col)
+model = md.build_model(-2, mx, n_cols)
+md.train(model, train_X, train_y, test_X, test_y)
 
+test['probability_final_over'] = model.predict(test_X)[:,0]
+test['probability_final_under'] = model.predict(test_X)[:,1]
+test['prediction_final_over'] = np.argmax(model.predict(test_X), axis=1)
 
-# preprocessing test
-test_X = np.array([np.pad(frame[[col for col in test.columns if col not in not_ts_cols]].values,
-                    pad_width=[(0, mx-len(frame)), (0, 0)],
-                    mode='constant',
-                    constant_values=special_value)
-                    for _,frame in gt]).reshape(-1, mx, n_cols)
-scaler = MinMaxScaler(feature_range=(0, 1))
-test_X = scaler.fit_transform(test_X.reshape(-1, n_cols)).reshape(-1, mx, n_cols)
-test_y = gt.first()['final_uo'].values
-test_y = to_categorical(test_y)
+lo_df = test.merge(test_goals_live_odds, on=['minute', 'id_partita'])
 
-
-model = Sequential()
-model.add(Masking(mask_value=special_value, input_shape=(mx, n_cols)))
-model.add(LSTM(30, input_shape=(mx, n_cols), return_sequences=True))
-model.add(Dropout(0.1))
-model.add(LSTM(20, return_sequences=True))
-model.add(Dropout(0.1))
-model.add(LSTM(10, return_sequences=False))
-model.add(Dropout(0.1))
-model.add(Dense(2, activation='softmax'))
-model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-print(model.summary())
-
-history = model.fit(train_X, train_y, validation_data=(test_X, test_y), batch_size=16, epochs=30,  verbose=1)
-history.history
+t = 0
+for index, row in lo_df.iterrows():
+    if row['probability_final_under'] >= 0.80 or row['probability_final_under'] <= 0.20:
+        if row['final_uo'] == row['prediction_final_over']:
+            if row['prediction_final_over'] == 1:
+                if row['live_odd_under'] > 1:
+                    t += (row['live_odd_under'] - 1)
+            else:
+                if row['live_odd_over'] > 1:
+                    t += (row['live_odd_over'] - 1)
+        else:
+            t -= 1
+print(t)

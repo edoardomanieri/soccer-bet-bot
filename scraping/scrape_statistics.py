@@ -27,8 +27,8 @@ def setup():
     return driver
 
 
-def get_match_statistics(day, columns, campionati, possesso_palla_index, discard_list):
-    
+def get_match_statistics(day, columns, campionati, possesso_palla_index, discard_list, match_live_dict):
+
     file_path = os.path.dirname(os.path.abspath(__file__))
     driver = setup()
     d = date.today().strftime("%d/%m/%Y")
@@ -42,7 +42,7 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
             soup_initial_page.find_all(
                 "div", class_="event__match event__match--live event__match--last event__match--oneLine")
 
-        match_live_dict = get_matches_dict()
+        get_matches_dict(match_live_dict)
         for match in matches:
             teamA = match.find(
                 "div", class_="event__participant event__participant--home").get_text().lower()
@@ -89,7 +89,7 @@ def get_match_statistics(day, columns, campionati, possesso_palla_index, discard
                     if j == 5:
                         print("didn't get the statistics of: {}-{}".format(teamA, teamB))
 
-                    WebDriverWait(driver, 10).until(
+                    WebDriverWait(driver, 15).until(
                         EC.presence_of_element_located((By.CLASS_NAME, "statBox")))
                     content_statistic_page = driver.page_source
                     soup_statistic_page = BeautifulSoup(content_statistic_page, "lxml")
@@ -176,7 +176,7 @@ def get_ended_matches(day, campionati, columns):
         url = "https://www.diretta.it"
         driver.get(url)
         locale.setlocale(locale.LC_ALL, 'it_IT.UTF-8')
-        d = date.today() - timedelta(days = 1)
+        d = date.today() - timedelta(days=1)
         d_name = calendar.day_name[d.weekday()][:3].capitalize()
         d = d.strftime("%d/%m")
         total_day = d + " " + d_name
@@ -372,7 +372,7 @@ def adapt_files(day):
 # 0 14 * 1-5,9-12 6,7
 # test
 
-
+# cd scraping
 # file_path = os.path.dirname(os.path.abspath(__file__))
 # with open(file_path + "/../csv/stats1.csv", "r") as f:
 #     line = f.readline()
@@ -387,8 +387,8 @@ def adapt_files(day):
 #             "\n", "") for team in line[1:] if team.replace("\n", "") != ""]
 #         campionati[line[0].replace(" ", "")] = team_list
     
-# get_ended_matches(35, campionati, columns)
-#filter_matches(25, columns)
+# get_ended_matches(44, campionati, columns)
+# filter_matches(44, columns)
 
 
         # geckodriver_path = file_path + "/geckodriver"

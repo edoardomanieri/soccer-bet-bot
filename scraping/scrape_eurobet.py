@@ -1,9 +1,11 @@
 from selenium import webdriver
 from bs4 import BeautifulSoup
 import time
+import traceback
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 import os
 
 
@@ -20,25 +22,46 @@ def setup():
     return driver
 
 
-def get_matches_dict():
+def wait_driver(driver):
+    for _ in range(2):
+        try:
+            WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CLASS_NAME, "event-players")))
+            return
+        except Exception:
+            pass
+
+
+def get_matches_dict(match_dict):
     driver = setup()
     url = "https://www.eurobet.it/it/scommesse-live/#!"
     driver.get(url)
-    time.sleep(2)
+    while driver.current_url != url:
+        driver.get(url)
+        time.sleep(1)
+    wait_driver(driver)
     content = driver.page_source
     soup_initial_page = BeautifulSoup(content, "lxml")
+    driver.find_element_by_xpath('/html/body/div[4]/div[2]/div/div[1]/div/div/div/div/div/div[3]/div/ul/li[2]').click()
+    time.sleep(3)
+    html = driver.find_element_by_tag_name('html')
+    html.send_keys(Keys.END)
+    html.send_keys(Keys.END)
+    html.send_keys(Keys.END)
+    html.send_keys(Keys.END)
+    time.sleep(3)
     matches = soup_initial_page.find_all("div", class_="event-players")
-    match_dict = dict()
     for match in matches:
         match_a = match.find("a")
         href = match_a['href']
         teams = match_a.get_text().lower()
+        if len(teams.split('-')) != 2:
+            continue
         teamA, teamB = teams.split('-')
         teamA = teamA.strip()
         teamB = teamB.strip()
         match_dict[(teamA, teamB)] = href
+    print(match_dict.keys())
     driver.close()
-    return match_dict
 
 
 def get_live_odds(driver, d, teamA, teamB):
@@ -52,7 +75,7 @@ def get_live_odds(driver, d, teamA, teamB):
         driver.get(newurl)
         while driver.current_url != newurl:
             driver.get(newurl)
-            time.sleep(2)
+            time.sleep(1)
         WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.CLASS_NAME, "quotaType")))
         match_content = driver.page_source
         match_page = BeautifulSoup(match_content, "lxml")
@@ -73,8 +96,11 @@ def get_live_odds(driver, d, teamA, teamB):
                         odds_res[3] = odds_res[4]
                         odds_res[4] = tmp
                         return odds_res
+        while len(odds_res) != 5:
+            odds_res.append(0)
+        return odds_res
     except Exception:
-        odds_res = [-1, -1, -1, -1, -1]
+        odds_res = [0, 0, 0, 0, 0]
         print(traceback.format_exc())
         print("not captured odds")
         return odds_res
@@ -90,7 +116,7 @@ def get_match_href(d, teamA, teamB):
 
 
 def test():
-    d = get_matches_dict()
+    #d = get_matches_dict()
     driver = setup()
     odds = get_live_odds(driver, d, 'sarmiento', 'crucero del norte')
     print(odds)

@@ -52,21 +52,22 @@ if __name__ == "__main__":
     with open(file_path + "/kill_process.sh", "w") as f:
         f.write("#!/bin/bash\nkill -15 {}".format(os.getpid()))
 
-    signal.signal(signal.SIGTERM, partial( 
+    signal.signal(signal.SIGTERM, partial(
         ss.signal_handler, day, campionati, columns))
 
     with open(file_path + "/discard", "w") as f:
         f.write("")
     previous_len = 0
+    match_live_dict = {}
     while True:
         try:
             with open(file_path + "/discard", "r") as f1:
                 discard_list = [line.replace("\n", "").strip() for line in f1.readlines()]
             print("getting matches statistics, don't stop the process...")
-            ss.get_match_statistics(day, columns, campionati, i, discard_list)
+            ss.get_match_statistics(day, columns, campionati, i, discard_list, match_live_dict)
             print("Now you can safely stop the process...")
             print(datetime.now().time())
-            time.sleep(120)
+            time.sleep(200)
         except KeyboardInterrupt:
             print("getting final scores....")
             ss.get_ended_matches(day, campionati, columns)
