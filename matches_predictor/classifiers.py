@@ -1,11 +1,161 @@
 from xgboost import XGBClassifier
-from sklearn.metrics import accuracy_score
+import os
+from sklearn.preprocessing import MinMaxScaler
+from keras.layers import LSTM, Masking
+from keras.layers import Dense, Dropout
+from keras.models import Sequential
+from keras.utils import to_categorical
+from keras.models import load_model
+import numpy as np
+import abc
+import joblib
 
 
-def xgb(train_X, train_y, test_X, test_y):
-    xgb = XGBClassifier(n_estimators=2000)
-    xgb.fit(train_X, train_y)
-    predictions = xgb.predict(test_X)
-    return xgb, accuracy_score(test_y, predictions)
+class Model(metaclass=abc.ABCMeta):
+    """
+    Abstract class that is the super class of all models
+    """
+
+    @abc.abstractmethod
+    def preprocess_train(self):
+        pass
+
+    @abc.abstractmethod
+    def preprocess_input(self):
+        pass
+
+    @abc.abstractmethod
+    def build_model(self):
+        pass
+
+    @abc.abstractmethod
+    def train(self, model, train_X, train_y):
+        pass
+
+    @abc.abstractmethod
+    def save_model(self):
+        pass
+
+    @abc.abstractmethod
+    def get_predict_proba(self):
+        pass
 
 
+class lstm(Model):
+
+    def __init__(self, train_df, cat_col, outcome_cols, special_value=-2,
+                 batch_size=16, epochs=30):
+        self.special_value = special_value
+        self.train_df = train_df
+        self.train_groups = train_df.groupby(['id_partita'])
+        self.mx = self.train_groups['id_partita'].size().max()
+        self.not_ts_cols = outcome_cols + cat_col + ['minute']
+        self.n_cols = len(train_df.columns) - len(self.not_ts_cols)
+        self.batch_size = batch_size
+        self.epochs = epochs
+
+    def preprocess_train(self):
+        # preprocessing lstm train
+        train_X = np.array([np.pad(frame[[col for col in self.train_df.columns
+                                          if col not in self.not_ts_cols]].values,
+                            pad_width=[(0, self.mx-len(frame)), (0, 0)],
+                            mode='constant',
+                            constant_values=self.special_value)
+                            for _,frame in self.train_groups]).reshape(-1,
+                                                                       self.mx,
+                                                                       self.n_cols)
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        train_X = scaler.fit_transform(train_X.reshape(-1, self.n_cols)).reshape(-1, self.mx, self.n_cols)
+        train_y = self.train_groups.first()['final_uo'].values
+        train_y = to_categorical(train_y)
+        return train_X, train_y
+
+    def preprocess_input(self, input_df):
+        # preprocessing test
+        input_groups = input_df.groupby(['id_partita'])
+        test_X = np.array([np.pad(frame[[col for col in input_df.columns
+                                         if col not in self.not_ts_cols]].values,
+                           pad_width=[(0, self.mx-len(frame)), (0, 0)],
+                           mode='constant',
+                           constant_values=self.special_value)
+                           for _, frame in input_groups]).reshape(-1, self.mx,
+                                                                  self.n_cols)
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        test_X = scaler.fit_transform(test_X.reshape(-1, self.n_cols)).reshape(-1, self.mx, self.n_cols)
+        return test_X
+
+    def build_model(self):
+        model = Sequential()
+        model.add(Masking(mask_value=self.special_value,
+                          input_shape=(self.mx, self.n_cols)))
+        model.add(LSTM(30, input_shape=(self.mx, self.n_cols),
+                  return_sequences=True))
+        model.add(Dropout(0.1))
+        model.add(LSTM(20, return_sequences=True))
+        model.add(Dropout(0.1))
+        model.add(LSTM(10, return_sequences=False))
+        model.add(Dropout(0.1))
+        model.add(Dense(2, activation='softmax'))
+        model.compile(loss='categorical_crossentropy', optimizer='adam',
+                      metrics=['accuracy'])
+        print(model.summary())
+        return model
+
+    def train(self, model, train_X, train_y):
+        model.fit(train_X, train_y, batch_size=self.batch_size,
+                  epochs=self.epochs, verbose=1)
+
+    def save_model(self, model):
+        file_path = os.path.dirname(os.path.abspath(__file__))
+        model.save(file_path + "/../models_pp/goals.h5")
+
+    def get_model(self):
+        file_path = os.path.dirname(os.path.abspath(__file__))
+        return load_model(file_path + "/../models_pp/goals.h5")
+
+    def get_predict_proba(self, model, test_X):
+        predictions = np.argmax(model.predict(test_X), axis=1)
+        probabilities = model.predict_proba(test_X)
+        return predictions, probabilities
+
+
+class xgb(Model):
+
+    def __init__(self, train_df, cat_col, outcome_cols, n_estimators=2000):
+        self.train_df = train_df
+        self.cat_col = cat_col
+        self.outcome_cols = outcome_cols
+        self.n_estimators = n_estimators
+
+    def preprocess_train(self):
+        # preprocessing lstm train
+        train_y = self.train_df['final_uo'].values
+        train_X = self.train_df.drop(columns=['final_uo'] +
+                                     self.cat_col +
+                                     self.outcome_cols)
+        return train_X, train_y
+
+    def preprocess_input(self, input_df):
+        # preprocessing test
+        test_X = input_df.drop(columns=self.cat_col)
+        return test_X
+
+    def build_model(self):
+        model = XGBClassifier(n_estimators=2000)
+        return model
+
+    def train(self, model, train_X, train_y):
+        model.fit(train_X, train_y)
+
+    def save_model(self, model):
+        file_path = os.path.dirname(os.path.abspath(__file__))
+        joblib.dump(model, file_path + "/../models_pp/goals.joblib")
+
+    def get_model(self):
+        file_path = os.path.dirname(os.path.abspath(__file__))
+        return joblib.load(file_path + "/../models_pp/goals.joblib")
+
+    def get_predict_proba(self, model, test_X):
+        predictions = model.predict(test_X)
+        probabilities = model.predict_proba(test_X)
+        return predictions, probabilities

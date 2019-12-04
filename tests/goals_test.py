@@ -135,8 +135,8 @@ test_X, test_y, test, mx, n_cols = md.preprocessing_test(train, test, cat_col)
 model = md.build_model(-2, mx, n_cols)
 md.train(model, train_X, train_y, test_X, test_y)
 
-test['probability_final_over'] = model.predict(test_X)[:,0]
-test['probability_final_under'] = model.predict(test_X)[:,1]
+test['probability_final_over'] = model.predict(test_X)[:, 0]
+test['probability_final_under'] = model.predict(test_X)[:, 1]
 test['prediction_final_over'] = np.argmax(model.predict(test_X), axis=1)
 
 lo_df = test.merge(test_goals_live_odds, on=['minute', 'id_partita'])

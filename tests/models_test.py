@@ -44,10 +44,10 @@ def preprocessing_test(train, test, cat_col):
     n_cols = len(train.columns) - len(not_ts_cols)
     # preprocessing test
     test_X = np.array([np.pad(frame[[col for col in test.columns if col not in not_ts_cols]].values,
-                        pad_width=[(0, mx-len(frame)), (0, 0)],
-                        mode='constant',
-                        constant_values=special_value)
-                        for _,frame in gt]).reshape(-1, mx, n_cols)
+                       pad_width=[(0, mx-len(frame)), (0, 0)],
+                       mode='constant',
+                       constant_values=special_value)
+                       for _,frame in gt]).reshape(-1, mx, n_cols)
     scaler = MinMaxScaler(feature_range=(0, 1))
     test_X = scaler.fit_transform(test_X.reshape(-1, n_cols)).reshape(-1, mx, n_cols)
     test_y = gt.first()['final_uo'].values
@@ -65,7 +65,8 @@ def build_model(special_value, mx, n_cols):
     model.add(LSTM(10, return_sequences=False))
     model.add(Dropout(0.1))
     model.add(Dense(2, activation='softmax'))
-    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    model.compile(loss='categorical_crossentropy', optimizer='adam', 
+                  metrics=['accuracy'])
     print(model.summary())
     return model
 
