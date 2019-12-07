@@ -26,7 +26,7 @@ if __name__ == "__main__":
     file_path = os.path.dirname(os.path.abspath(__file__))
     files = glob.glob(file_path + "/../csv/stats*")
     day = len(files) + 1
-    
+
     with open(file_path + "/../csv/stats1.csv", "r") as f:
         line = f.readline()
         columns = [col.replace("\n", "").replace(" ", "")
@@ -48,7 +48,7 @@ if __name__ == "__main__":
         i += 1
 
     print(os.getpid())
- 
+
     with open(file_path + "/kill_process.sh", "w") as f:
         f.write("#!/bin/bash\nkill -15 {}".format(os.getpid()))
 

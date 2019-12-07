@@ -44,7 +44,7 @@ class Model(metaclass=abc.ABCMeta):
 class lstm(Model):
 
     def __init__(self, train_df, cat_col, outcome_cols, special_value=-2,
-                 batch_size=16, epochs=30):
+                 batch_size=16, epochs=2):
         self.special_value = special_value
         self.train_df = train_df
         self.train_groups = train_df.groupby(['id_partita'])
@@ -70,18 +70,21 @@ class lstm(Model):
         train_y = to_categorical(train_y)
         return train_X, train_y
 
-    def preprocess_input(self, input_df):
+    def preprocess_input(self, input_df, test_y=False):
         # preprocessing test
-        input_groups = input_df.groupby(['id_partita'])
+        self.input_groups = input_df.groupby(['id_partita'])
         test_X = np.array([np.pad(frame[[col for col in input_df.columns
                                          if col not in self.not_ts_cols]].values,
                            pad_width=[(0, self.mx-len(frame)), (0, 0)],
                            mode='constant',
                            constant_values=self.special_value)
-                           for _, frame in input_groups]).reshape(-1, self.mx,
-                                                                  self.n_cols)
+                           for _, frame in self.input_groups]).reshape(-1, self.mx, self.n_cols)
         scaler = MinMaxScaler(feature_range=(0, 1))
         test_X = scaler.fit_transform(test_X.reshape(-1, self.n_cols)).reshape(-1, self.mx, self.n_cols)
+        if test_y:
+            test_y_values = self.input_groups.first()['final_uo'].values
+            test_y_values = to_categorical(test_y_values)
+            return test_X, test_y_values
         return test_X
 
     def build_model(self):
@@ -101,9 +104,14 @@ class lstm(Model):
         print(model.summary())
         return model
 
-    def train(self, model, train_X, train_y):
-        model.fit(train_X, train_y, batch_size=self.batch_size,
-                  epochs=self.epochs, verbose=1)
+    def train(self, model, train_X, train_y, test_X=None, test_y=None):
+        if test_X is None and test_y is None:
+            model.fit(train_X, train_y, batch_size=self.batch_size,
+                      epochs=self.epochs, verbose=1)
+        else:
+            model.fit(train_X, train_y, batch_size=self.batch_size,
+                      validation_data=(test_X, test_y),
+                      epochs=self.epochs, verbose=1)
 
     def save_model(self, model):
         file_path = os.path.dirname(os.path.abspath(__file__))
@@ -113,10 +121,14 @@ class lstm(Model):
         file_path = os.path.dirname(os.path.abspath(__file__))
         return load_model(file_path + "/../models_pp/goals.h5")
 
-    def get_predict_proba(self, model, test_X):
+    def get_predict_proba(self, model, test_X, input_df):
         predictions = np.argmax(model.predict(test_X), axis=1)
         probabilities = model.predict_proba(test_X)
-        return predictions, probabilities
+        tmp = self.input_groups.last()
+        tmp['predictions'] = predictions
+        tmp['probability_over'] = probabilities[:, 0]
+        merged = input_df.merge(tmp, on=['id_partita', 'minute'], suffixes=('', '_y'))
+        return merged
 
 
 class xgb(Model):
@@ -130,21 +142,26 @@ class xgb(Model):
     def preprocess_train(self):
         # preprocessing lstm train
         train_y = self.train_df['final_uo'].values
-        train_X = self.train_df.drop(columns=['final_uo'] +
-                                     self.cat_col +
-                                     self.outcome_cols)
+        to_drop = self.cat_col + self.outcome_cols
+        train_X = self.train_df.drop(columns=to_drop)
         return train_X, train_y
 
-    def preprocess_input(self, input_df):
+    def preprocess_input(self, input_df, test_y=False):
         # preprocessing test
-        test_X = input_df.drop(columns=self.cat_col)
+        to_drop = self.cat_col
+        if test_y:
+            to_drop += ['final_uo']
+        test_X = input_df.drop(columns=to_drop)
+        if test_y:
+            test_y_values = input_df['final_uo'].values
+            return test_X, test_y_values
         return test_X
 
     def build_model(self):
         model = XGBClassifier(n_estimators=2000)
         return model
 
-    def train(self, model, train_X, train_y):
+    def train(self, model, train_X, train_y, test_X=None, test_y=None):
         model.fit(train_X, train_y)
 
     def save_model(self, model):
@@ -155,7 +172,9 @@ class xgb(Model):
         file_path = os.path.dirname(os.path.abspath(__file__))
         return joblib.load(file_path + "/../models_pp/goals.joblib")
 
-    def get_predict_proba(self, model, test_X):
+    def get_predict_proba(self, model, test_X, input_df):
         predictions = model.predict(test_X)
         probabilities = model.predict_proba(test_X)
-        return predictions, probabilities
+        input_df['predictions'] = predictions
+        input_df['probability_over'] = probabilities[:, 0]
+        return input_df

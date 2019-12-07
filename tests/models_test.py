@@ -65,7 +65,7 @@ def build_model(special_value, mx, n_cols):
     model.add(LSTM(10, return_sequences=False))
     model.add(Dropout(0.1))
     model.add(Dense(2, activation='softmax'))
-    model.compile(loss='categorical_crossentropy', optimizer='adam', 
+    model.compile(loss='categorical_crossentropy', optimizer='adam',
                   metrics=['accuracy'])
     print(model.summary())
     return model

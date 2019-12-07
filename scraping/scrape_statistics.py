@@ -387,8 +387,8 @@ def adapt_files(day):
 #             "\n", "") for team in line[1:] if team.replace("\n", "") != ""]
 #         campionati[line[0].replace(" ", "")] = team_list
     
-# get_ended_matches(44, campionati, columns)
-# filter_matches(44, columns)
+# get_ended_matches(46, campionati, columns)
+# filter_matches(46, columns)
 
 
         # geckodriver_path = file_path + "/geckodriver"
