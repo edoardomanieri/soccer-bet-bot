@@ -24,7 +24,7 @@ def drop_nan(df, thresh='half'):
     df.dropna(axis=0, thresh=thresh, inplace=True)
 
     # eliminate rows with nans on target or on important columns
-    important_cols = ['id_partita']
+    important_cols = ['id_partita', 'home_final_score', 'away_final_score']
     df.dropna(axis=0, subset=important_cols, how='any', inplace=True)
 
     # drop matches already in over
@@ -137,8 +137,8 @@ def add_input_cols(df):
 def split_test_train(df, prematch_odds=True, live_odds=True, minute=80):
     id_partita_test = get_ids_for_test(df, prematch_odds=prematch_odds, live_odds=live_odds)
     test_mask = df['id_partita'].isin(id_partita_test)
-    test = df.loc[test_mask, :].copy(deep=True)
-    train = df.loc[~(test_mask), :].copy(deep=True)
+    test = df.loc[test_mask, :].copy()
+    train = df.loc[~(test_mask), :].copy()
     test = drop_easy_predictions(test, minute)
     return train, test
 

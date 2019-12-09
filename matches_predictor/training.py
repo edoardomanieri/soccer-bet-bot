@@ -54,8 +54,8 @@ def drop_nan(df, thresh='half'):
     df.dropna(axis=0, subset=important_cols, how='any', inplace=True)
 
     # drop matches already in over
-    under_mask = (df['home_score'] + df['away_score']) < 3
-    df = df.loc[under_mask, :].copy()
+    over_mask = (df['home_score'] + df['away_score']) >= 3
+    df.drop(df[over_mask].index, inplace=True)
 
 
 def get_df():

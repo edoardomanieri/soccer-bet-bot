@@ -9,22 +9,27 @@ def get_live_predictions(clf='xgb'):
     training.to_numeric(df, cat_col)
 
     train_df, test_df = test_set.split_test_train(df)
+
     training.drop_odds_cols(train_df)
     training.drop_nan(train_df)
     training.impute_nan(train_df)
     training.add_outcome_col(train_df)
     training.add_input_cols(train_df)
+    training.save(train_df)
 
-    test_set.drop_nan(test_df)
-    test_set.impute_nan(train_df, test_df)
-    test_set.add_input_cols(test_df)
     test_set.normalize_prematch_odds(test_df)
     test_prematch_odds = test_set.pop_prematch_odds_data(test_df)
     test_live_odds = test_set.pop_live_odds_data(test_df)
 
+    test_set.drop_nan(test_df)
     test_set.add_outcome_col(test_df)
     test_y = test_df[['id_partita', 'minute', 'final_uo']].copy()
     test_set.drop_outcome_cols(test_df)
+
+    test_set.impute_nan(train_df, test_df)
+    test_set.add_input_cols(test_df)
+
+    test_y = test_y.merge(test_df, on=['id_partita', 'minute'])[['id_partita', 'minute', 'final_uo']].copy()
 
     if clf == 'xgb':
         clf = classifiers.xgb(train_df, cat_col, outcome_cols)
