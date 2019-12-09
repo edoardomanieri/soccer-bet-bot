@@ -29,11 +29,11 @@ def get_live_predictions(clf='xgb', reprocess_train_data=False,
     if 'Unnamed: 0' in train_df.columns:
         train_df.drop(columns=['Unnamed: 0'], inplace=True)
 
+    input_data.drop_outcome_cols(input_df)
     input_data.to_numeric(input_df, cat_col)
     input_data.drop_nan(input_df)
     input_data.impute_nan(train_df, input_df)
     input_data.add_input_cols(input_df)
-    input_data.drop_outcome_cols(input_df)
 
     if clf == 'xgb':
         clf = classifiers.xgb(train_df, cat_col, outcome_cols)
@@ -52,4 +52,4 @@ def get_live_predictions(clf='xgb', reprocess_train_data=False,
     return predictions_df
 
 
-#get_live_predictions(clf='xgb', reprocess_train_data=True, retrain_model=True)
+get_live_predictions(clf='lstm', reprocess_train_data=True, retrain_model=True)

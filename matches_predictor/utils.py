@@ -4,7 +4,7 @@ import numpy as np
 def get_complete_predictions_df(input_df):
     final_df = input_df.loc[:, ['id_partita', 'home', 'away', 'minute', 'home_score',
                                 'away_score', 'predictions', 'probability_over']]\
-                       .sort_values(by=['id_partita', 'minute'], ascending=[True, False])\
+                       .sort_values(by='minute', ascending=False)\
                        .groupby(['id_partita']).first().reset_index().copy()
     return final_df
 

@@ -29,8 +29,9 @@ def drop_nan(df, thresh='half'):
     df.dropna(axis=0, subset=important_cols, how='any', inplace=True)
 
     # drop matches already in over
-    under_mask = (df['home_score'] + df['away_score']) < 3
-    df = df.loc[under_mask, :].copy()
+    over_mask = (df['home_score'] + df['away_score']) >= 3
+    ids = df.loc[over_mask, 'id_partita'].unique()
+    df.drop(df[df['id_partita'].isin(ids)].index, inplace=True)
 
 
 def normalize_prematch_odds(input_df):

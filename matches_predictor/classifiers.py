@@ -70,9 +70,9 @@ class lstm(Model):
         train_y = to_categorical(train_y)
         return train_X, train_y
 
-    def preprocess_input(self, input_df, test_y=False):
+    def preprocess_input(self, input_df, test_y=None):
         # preprocessing test
-        self.input_groups = input_df.groupby(['id_partita'])
+        self.input_groups = input_df.sort_values(by='minute', ascending=False).groupby(['id_partita'])
         test_X = np.array([np.pad(frame[[col for col in input_df.columns
                                          if col not in self.not_ts_cols]].values,
                            pad_width=[(0, self.mx-len(frame)), (0, 0)],
@@ -81,8 +81,8 @@ class lstm(Model):
                            for _, frame in self.input_groups]).reshape(-1, self.mx, self.n_cols)
         scaler = MinMaxScaler(feature_range=(0, 1))
         test_X = scaler.fit_transform(test_X.reshape(-1, self.n_cols)).reshape(-1, self.mx, self.n_cols)
-        if test_y:
-            test_y_values = self.input_groups.first()['final_uo'].values
+        if test_y is not None:
+            test_y_values = test_y.sort_values(by='minute', ascending=False).groupby(['id_partita']).first()['final_uo'].values
             test_y_values = to_categorical(test_y_values)
             return test_X, test_y_values
         return test_X
@@ -124,7 +124,7 @@ class lstm(Model):
     def get_predict_proba(self, model, test_X, input_df):
         predictions = np.argmax(model.predict(test_X), axis=1)
         probabilities = model.predict_proba(test_X)
-        tmp = self.input_groups.last()
+        tmp = self.input_groups.first()
         tmp['predictions'] = predictions
         tmp['probability_over'] = probabilities[:, 0]
         merged = input_df.merge(tmp, on=['id_partita', 'minute'], suffixes=('', '_y'))
@@ -146,14 +146,11 @@ class xgb(Model):
         train_X = self.train_df.drop(columns=to_drop)
         return train_X, train_y
 
-    def preprocess_input(self, input_df, test_y=False):
+    def preprocess_input(self, input_df, test_y=None):
         # preprocessing test
-        to_drop = self.cat_col
-        if test_y:
-            to_drop += ['final_uo']
-        test_X = input_df.drop(columns=to_drop)
-        if test_y:
-            test_y_values = input_df['final_uo'].values
+        test_X = input_df.drop(columns=self.cat_col)
+        if test_y is not None:
+            test_y_values = test_y['final_uo'].values
             return test_X, test_y_values
         return test_X
 
