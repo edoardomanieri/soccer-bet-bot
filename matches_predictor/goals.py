@@ -1,5 +1,6 @@
 import pandas as pd
-from matches_predictor import utils, training, classifiers, input_data
+from matches_predictor import utils, training, input_data
+from matches_predictor.classifiers.xgb import Xgb
 import os
 
 
@@ -22,6 +23,9 @@ def get_processed_train(reprocess_train_data, cat_col, file_path, res_path):
 def get_live_predictions(clf='xgb', params=None, reprocess_train_data=False,
                          retrain_model=False, res_path="../res/csv"):
 
+    if params is None:
+        params = {}
+
     file_path = os.path.dirname(os.path.abspath(__file__))
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
     outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
@@ -40,7 +44,7 @@ def get_live_predictions(clf='xgb', params=None, reprocess_train_data=False,
     input_data.impute_nan(train_df, input_df)
     input_data.add_input_cols(input_df)
 
-    clf = classifiers.xgb.xgb(train_df, cat_col, outcome_cols)
+    clf = Xgb(train_df, cat_col, outcome_cols)
 
     if retrain_model:
         training.train_model(clf, params)

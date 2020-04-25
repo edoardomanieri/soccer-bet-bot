@@ -84,7 +84,7 @@ def get_df(res_path):
     file_path = os.path.dirname(os.path.abspath(__file__))
     # import dataset
     all_files = sorted(glob.glob(f"{file_path}/{res_path}/*.csv"),
-                       key=lambda x: int(x[x.index('/csv/') + 10:-4]))
+                       key=lambda x: int(x[x.index('stats') + 5:-4]))
     li = [pd.read_csv(filename, index_col=None, header=0)
           for filename in all_files[:-1]]
     df = pd.concat(li, axis=0, ignore_index=True)

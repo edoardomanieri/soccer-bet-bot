@@ -1,10 +1,10 @@
 from xgboost import XGBClassifier
 import os
 import joblib
-from model import Model
+from matches_predictor.classifiers.model import Model
 
 
-class xgb(Model):
+class Xgb(Model):
 
     def __init__(self, train_df, cat_col, outcome_cols):
         self.train_df = train_df
@@ -36,11 +36,11 @@ class xgb(Model):
 
     def save_model(self, model):
         file_path = os.path.dirname(os.path.abspath(__file__))
-        joblib.dump(model, file_path + "/../res/models/goals.joblib")
+        joblib.dump(model, file_path + "/../../res/models/goals.joblib")
 
     def get_model(self):
         file_path = os.path.dirname(os.path.abspath(__file__))
-        return joblib.load(file_path + "/../res/models/goals.joblib")
+        return joblib.load(file_path + "/../../res/models/goals.joblib")
 
     def get_predict_proba(self, model, test_X, input_df):
         predictions = model.predict(test_X)

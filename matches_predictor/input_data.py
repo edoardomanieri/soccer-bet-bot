@@ -23,10 +23,10 @@ import os
        'away_final_score'''
 
 
-def get_df(path):
+def get_df(res_path):
     file_path = os.path.dirname(os.path.abspath(__file__))
     all_files = sorted(glob.glob(f"{file_path}/{res_path}/*.csv"),
-                       key=lambda x: int(x[x.index('/csv/') + 10:-4]))
+                       key=lambda x: int(x[x.index('stats') + 5:-4]))
     input_df = pd.read_csv(all_files[-1], index_col=None, header=0)
     if 'Unnamed: 0' in input_df.columns:
         input_df.drop(columns=['Unnamed: 0'], inplace=True)
