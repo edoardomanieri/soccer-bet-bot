@@ -1,1 +1,1 @@
-# Live_Betting_Predictior
+# Live soccer predictive model
