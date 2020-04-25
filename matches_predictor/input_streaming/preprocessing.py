@@ -1,39 +1,8 @@
 import pandas as pd
 import numpy as np
-import glob
-import os
 
 
-'''date', 'id_partita', 'minute', 'home', 'away', 'campionato',
-       'home_score', 'away_score', 'home_possesso_palla',
-       'away_possesso_palla', 'home_tiri', 'away_tiri', 'home_tiri_in_porta',
-       'away_tiri_in_porta', 'home_tiri_fuori', 'away_tiri_fuori',
-       'home_tiri_fermati', 'away_tiri_fermati', 'home_punizioni',
-       'away_punizioni', 'home_calci_d_angolo', 'away_calci_d_angolo',
-       'home_fuorigioco', 'away_fuorigioco', 'home_rimesse_laterali',
-       'away_rimesse_laterali', 'home_parate', 'away_parate', 'home_falli',
-       'away_falli', 'home_cartellini_rossi', 'away_cartellini_rossi',
-       'home_cartellini_gialli', 'away_cartellini_gialli',
-       'home_passaggi_totali', 'away_passaggi_totali',
-       'home_passaggi_completati', 'away_passaggi_completati',
-       'home_contrasti', 'away_contrasti', 'home_attacchi', 'away_attacchi',
-       'home_attacchi_pericolosi', 'away_attacchi_pericolosi', 'odd_1',
-       'odd_X', 'odd_2', 'odd_over', 'odd_under', 'live_odd_1', 'live_odd_X',
-       'live_odd_2', 'live_odd_over', 'live_odd_under', 'home_final_score',
-       'away_final_score'''
-
-
-def get_df(res_path):
-    file_path = os.path.dirname(os.path.abspath(__file__))
-    all_files = sorted(glob.glob(f"{file_path}/{res_path}/*.csv"),
-                       key=lambda x: int(x[x.index('stats') + 5:-4]))
-    input_df = pd.read_csv(all_files[-1], index_col=None, header=0)
-    if 'Unnamed: 0' in input_df.columns:
-        input_df.drop(columns=['Unnamed: 0'], inplace=True)
-    return input_df.sort_values(by=['id_partita', 'minute'], ascending=[True, False])
-
-
-def drop_nan(df, thresh='half'):
+def _drop_nan(df, thresh='half'):
     # eliminate duplicate rows
     subset = [col for col in df.columns if col != 'minute']
     df.drop_duplicates(subset=subset, inplace=True)
@@ -53,13 +22,13 @@ def drop_nan(df, thresh='half'):
     df.drop(df[df['id_partita'].isin(ids)].index, inplace=True)
 
 
-def normalize_prematch_odds(input_df):
+def _normalize_prematch_odds(input_df):
     tmp = (1 - ((1 / input_df['odd_over']) + (1 / input_df['odd_under']))) / 2
     input_df['odd_over'] = (1 / input_df['odd_over']) + tmp
     input_df['odd_under'] = (1 / input_df['odd_under']) + tmp
 
 
-def pop_prematch_odds_data(input_df):
+def _pop_prematch_odds_data(input_df):
     prematch_odds_input = input_df.loc[:, [
         'id_partita', 'minute', 'odd_under', 'odd_over']].copy()
     input_df.drop(columns=['odd_1', 'odd_2', 'odd_X',
@@ -67,7 +36,7 @@ def pop_prematch_odds_data(input_df):
     return prematch_odds_input
 
 
-def pop_live_odds_data(input_df):
+def _pop_live_odds_data(input_df):
     live_odds_input = input_df.loc[:, [
         'id_partita', 'minute', 'live_odd_under', 'live_odd_over']].copy()
     input_df.drop(columns=['live_odd_1', 'live_odd_2', 'live_odd_X',
@@ -75,24 +44,24 @@ def pop_live_odds_data(input_df):
     return live_odds_input
 
 
-def to_numeric(df, cat_col):
+def _to_numeric(df, cat_col):
     # change data type
     for col in df.columns:
         if col not in cat_col:
             df[col] = pd.to_numeric(df[col])
 
 
-def drop_outcome_cols(df):
+def _drop_outcome_cols(df):
     df.drop(columns=['home_final_score', 'away_final_score'], inplace=True)
 
 
-def add_input_cols(df):
+def _add_input_cols(df):
     df['actual_total_goals'] = df['home_score'] + df['away_score']
     df['over_strongness'] = (
         df['home_score'] + df['away_score']) * (90 - df['minute'])
 
 
-def impute_nan(train_df, test_df, thresh='half'):
+def _impute_nan(train_df, test_df, thresh='half'):
     # handling odds cols
     if 'odd_under' in test_df.columns:
         test_df.loc[test_df['odd_under'] == 0, 'odd_under'] = 2
@@ -130,3 +99,15 @@ def impute_nan(train_df, test_df, thresh='half'):
             test_df.loc[(mask_min_test) & (mask_max_test) & (nan_mask), 'away_' +
                         col] = col_df.loc[mask_min_train & mask_max_train, ['home_' + col, 'away_' + col]].mean().mean()
     test_df.dropna(inplace=True)
+
+
+def execute(input_df, train_df, cat_col):
+    _normalize_prematch_odds(input_df)
+    input_prematch_odds = _pop_prematch_odds_data(input_df)
+    input_live_odds = _pop_live_odds_data(input_df)
+    _drop_outcome_cols(input_df)
+    _to_numeric(input_df, cat_col)
+    _drop_nan(input_df)
+    _impute_nan(train_df, input_df)
+    _add_input_cols(input_df)
+    return input_prematch_odds

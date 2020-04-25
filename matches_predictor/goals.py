@@ -1,27 +1,13 @@
 import pandas as pd
-from matches_predictor import utils, training, input_data
+from matches_predictor import utils
 from matches_predictor.classifiers.xgb import Xgb
+from matches_predictor import train_set
+from matches_predictor import input_streaming
 import os
 
 
-def get_processed_train(reprocess_train_data, cat_col, file_path, res_path):
-    if reprocess_train_data:
-        train_df = training.get_df(res_path)
-        training.to_numeric(train_df, cat_col)
-        training.drop_odds_cols(train_df)
-        training.drop_nan(train_df)
-        training.impute_nan(train_df)
-        training.add_outcome_col(train_df)
-        training.add_input_cols(train_df)
-        training.save(train_df)
-    else:
-        train_df = pd.read_csv(
-            file_path + "/../res/dataframes/training_goals.csv", header=0, index_col=0)
-    return train_df
-
-
 def get_live_predictions(clf='xgb', params=None, reprocess_train_data=False,
-                         retrain_model=False, res_path="../res/csv"):
+                         retrain_model=False, res_path="../../res/csv"):
 
     if params is None:
         params = {}
@@ -30,24 +16,20 @@ def get_live_predictions(clf='xgb', params=None, reprocess_train_data=False,
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
     outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
 
-    input_df = input_data.get_df(res_path)
-    input_data.normalize_prematch_odds(input_df)
-    input_prematch_odds = input_data.pop_prematch_odds_data(input_df)
-    input_live_odds = input_data.pop_live_odds_data(input_df)
+    if reprocess_train_data:
+        train_df = train_set.retrieving.get_df(res_path)
+        train_set.preprocessing.execute(train_df, cat_col)
+    train_df = pd.read_csv(
+        file_path + "/../res/dataframes/training_goals.csv", header=0, index_col=0)
 
-    train_df = get_processed_train(
-        reprocess_train_data, cat_col, file_path, res_path)
-
-    input_data.drop_outcome_cols(input_df)
-    input_data.to_numeric(input_df, cat_col)
-    input_data.drop_nan(input_df)
-    input_data.impute_nan(train_df, input_df)
-    input_data.add_input_cols(input_df)
+    input_df = input_streaming.retrieving.get_df(res_path)
+    input_prematch_odds = input_streaming.preprocessing.execute(
+        input_df, train_df, cat_col)
 
     clf = Xgb(train_df, cat_col, outcome_cols)
 
     if retrain_model:
-        training.train_model(clf, params)
+        train_set.modeling.train_model(clf, params)
 
     model = clf.get_model()
     test_X = clf.preprocess_input(input_df)

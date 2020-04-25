@@ -1,28 +1,9 @@
 import pandas as pd
 import numpy as np
-import glob
 import os
 
-'''date', 'id_partita', 'minute', 'home', 'away', 'campionato',
-       'home_score', 'away_score', 'home_possesso_palla',
-       'away_possesso_palla', 'home_tiri', 'away_tiri', 'home_tiri_in_porta',
-       'away_tiri_in_porta', 'home_tiri_fuori', 'away_tiri_fuori',
-       'home_tiri_fermati', 'away_tiri_fermati', 'home_punizioni',
-       'away_punizioni', 'home_calci_d_angolo', 'away_calci_d_angolo',
-       'home_fuorigioco', 'away_fuorigioco', 'home_rimesse_laterali',
-       'away_rimesse_laterali', 'home_parate', 'away_parate', 'home_falli',
-       'away_falli', 'home_cartellini_rossi', 'away_cartellini_rossi',
-       'home_cartellini_gialli', 'away_cartellini_gialli',
-       'home_passaggi_totali', 'away_passaggi_totali',
-       'home_passaggi_completati', 'away_passaggi_completati',
-       'home_contrasti', 'away_contrasti', 'home_attacchi', 'away_attacchi',
-       'home_attacchi_pericolosi', 'away_attacchi_pericolosi', 'odd_1',
-       'odd_X', 'odd_2', 'odd_over', 'odd_under', 'live_odd_1', 'live_odd_X',
-       'live_odd_2', 'live_odd_over', 'live_odd_under', 'home_final_score',
-       'away_final_score'''
 
-
-def impute_nan(df, thresh='half'):
+def _impute_nan(df, thresh='half'):
     # handling odds cols
     if 'odd_under' in df.columns:
         df.loc[df['odd_under'] == 0, 'odd_under'] = 2
@@ -61,7 +42,7 @@ def impute_nan(df, thresh='half'):
     df.dropna(inplace=True)
 
 
-def drop_nan(df, thresh='half'):
+def _drop_nan(df, thresh='half'):
     # eliminate duplicate rows
     subset = [col for col in df.columns if col != 'minute']
     df.drop_duplicates(subset=subset, inplace=True)
@@ -80,61 +61,51 @@ def drop_nan(df, thresh='half'):
     df.drop(df[over_mask].index, inplace=True)
 
 
-def get_df(res_path):
-    file_path = os.path.dirname(os.path.abspath(__file__))
-    # import dataset
-    all_files = sorted(glob.glob(f"{file_path}/{res_path}/*.csv"),
-                       key=lambda x: int(x[x.index('stats') + 5:-4]))
-    li = [pd.read_csv(filename, index_col=None, header=0)
-          for filename in all_files[:-1]]
-    df = pd.concat(li, axis=0, ignore_index=True)
-    return df.reset_index(drop=True)
-
-
-def to_numeric(df, cat_col):
+def _to_numeric(df, cat_col):
     # change data type
     for col in df.columns:
         if col not in cat_col:
             df[col] = pd.to_numeric(df[col])
 
 
-def add_outcome_col(df):
+def _add_outcome_col(df):
     df['final_uo'] = np.where(
         df['home_final_score'] + df['away_final_score'] > 2, 0, 1)
 
 
-def add_input_cols(df):
+def _add_input_cols(df):
     df['actual_total_goals'] = df['home_score'] + df['away_score']
     df['over_strongness'] = (
         df['home_score'] + df['away_score']) * (90 - df['minute'])
 
 
-def save(df):
-    file_path = os.path.dirname(os.path.abspath(__file__))
-    df.reset_index(drop=True).to_csv(
-        file_path + "/../res/dataframes/training_goals.csv")
-
-
-def train_model(clf, params, test_X=None, test_y=None):
-    """
-    Create model and save it with joblib
-    """
-    train_X, train_y = clf.preprocess_train()
-    model = clf.build_model(**params)
-    clf.train(model, train_X, train_y, test_X, test_y)
-    clf.save_model(model)
-
-
-def drop_prematch_odds_col(df):
+def _drop_prematch_odds_col(df):
     df.drop(columns=['odd_over', 'odd_under',
                      'odd_1', 'odd_X', 'odd_2'], inplace=True)
 
 
-def drop_live_odds_col(df):
+def _drop_live_odds_col(df):
     df.drop(columns=['live_odd_over', 'live_odd_under',
                      'live_odd_1', 'live_odd_X', 'live_odd_2'], inplace=True)
 
 
-def drop_odds_cols(df):
-    drop_prematch_odds_col(df)
-    drop_live_odds_col(df)
+def _drop_odds_cols(df):
+    _drop_prematch_odds_col(df)
+    _drop_live_odds_col(df)
+
+
+def _save(df):
+    file_path = os.path.dirname(os.path.abspath(__file__))
+    df.reset_index(drop=True).to_csv(
+        file_path + "/../../res/dataframes/training_goals.csv")
+
+
+########################### main function #############
+def execute(train_df, cat_col):
+    _to_numeric(train_df, cat_col)
+    _drop_odds_cols(train_df)
+    _drop_nan(train_df)
+    _impute_nan(train_df)
+    _add_outcome_col(train_df)
+    _add_input_cols(train_df)
+    _save(train_df)
