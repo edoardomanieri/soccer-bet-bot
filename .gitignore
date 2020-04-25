@@ -12,9 +12,7 @@ __pycache__/
 *.so
 
 # data
-csv/
-dfs_pp/
-dfs_cmp/
+res/csv/
 
 # Distribution / packaging
 .Python

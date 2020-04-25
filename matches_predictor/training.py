@@ -80,10 +80,10 @@ def drop_nan(df, thresh='half'):
     df.drop(df[over_mask].index, inplace=True)
 
 
-def get_df():
+def get_df(res_path):
     file_path = os.path.dirname(os.path.abspath(__file__))
     # import dataset
-    all_files = sorted(glob.glob(file_path + "/../res/csv/*.csv"),
+    all_files = sorted(glob.glob(f"{file_path}/{res_path}/*.csv"),
                        key=lambda x: int(x[x.index('/csv/') + 10:-4]))
     li = [pd.read_csv(filename, index_col=None, header=0)
           for filename in all_files[:-1]]
