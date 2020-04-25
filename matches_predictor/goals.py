@@ -3,17 +3,7 @@ from matches_predictor import utils, training, classifiers, input_data
 import os
 
 
-def get_live_predictions(clf='xgb', reprocess_train_data=False,
-                         retrain_model=False):
-    file_path = os.path.dirname(os.path.abspath(__file__))
-    cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
-    outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
-
-    input_df = input_data.get_df()
-    input_data.normalize_prematch_odds(input_df)
-    input_prematch_odds = input_data.pop_prematch_odds_data(input_df)
-    input_live_odds = input_data.pop_live_odds_data(input_df)
-
+def get_processed_train(reprocess_train_data, cat_col, file_path):
     if reprocess_train_data:
         train_df = training.get_df()
         training.to_numeric(train_df, cat_col)
@@ -24,10 +14,24 @@ def get_live_predictions(clf='xgb', reprocess_train_data=False,
         training.add_input_cols(train_df)
         training.save(train_df)
     else:
-        train_df = pd.read_csv(file_path + "/../dfs_pp/training_goals.csv",
-                               header=0)
-    if 'Unnamed: 0' in train_df.columns:
-        train_df.drop(columns=['Unnamed: 0'], inplace=True)
+        train_df = pd.read_csv(
+            file_path + "/../dfs_pp/training_goals.csv", header=0, index_col=0)
+    return train_df
+
+
+def get_live_predictions(clf='xgb', params=None, reprocess_train_data=False,
+                         retrain_model=False):
+
+    file_path = os.path.dirname(os.path.abspath(__file__))
+    cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
+    outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
+
+    input_df = input_data.get_df()
+    input_data.normalize_prematch_odds(input_df)
+    input_prematch_odds = input_data.pop_prematch_odds_data(input_df)
+    input_live_odds = input_data.pop_live_odds_data(input_df)
+
+    train_df = get_processed_train(reprocess_train_data, cat_col, file_path)
 
     input_data.drop_outcome_cols(input_df)
     input_data.to_numeric(input_df, cat_col)
@@ -35,13 +39,12 @@ def get_live_predictions(clf='xgb', reprocess_train_data=False,
     input_data.impute_nan(train_df, input_df)
     input_data.add_input_cols(input_df)
 
-    if clf == 'xgb':
-        clf = classifiers.xgb(train_df, cat_col, outcome_cols)
-    elif clf == 'lstm':
-        clf = classifiers.lstm(train_df, cat_col, outcome_cols)
+    clf = classifiers.xgb(train_df, cat_col, outcome_cols)
+    # elif clf == 'lstm':
+    #     clf = classifiers.lstm(train_df, cat_col, outcome_cols)
 
     if retrain_model:
-        training.train_model(clf)
+        training.train_model(clf, params)
 
     model = clf.get_model()
     test_X = clf.preprocess_input(input_df)
@@ -52,4 +55,6 @@ def get_live_predictions(clf='xgb', reprocess_train_data=False,
     return predictions_df
 
 
-get_live_predictions(clf='lstm', reprocess_train_data=True, retrain_model=True)
+df = get_live_predictions(
+    clf='xgb', reprocess_train_data=False, retrain_model=False)
+df.drop(columns=['probability_over', 'odd_under', 'odd_over'])

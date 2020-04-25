@@ -25,7 +25,7 @@ class Model(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def build_model(self):
+    def build_model(self, params):
         pass
 
     @abc.abstractmethod
@@ -58,41 +58,45 @@ class lstm(Model):
         # preprocessing lstm train
         train_X = np.array([np.pad(frame[[col for col in self.train_df.columns
                                           if col not in self.not_ts_cols]].values,
-                            pad_width=[(0, self.mx-len(frame)), (0, 0)],
-                            mode='constant',
-                            constant_values=self.special_value)
-                            for _,frame in self.train_groups]).reshape(-1,
-                                                                       self.mx,
-                                                                       self.n_cols)
+                                   pad_width=[(0, self.mx-len(frame)), (0, 0)],
+                                   mode='constant',
+                                   constant_values=self.special_value)
+                            for _, frame in self.train_groups]).reshape(-1,
+                                                                        self.mx,
+                                                                        self.n_cols)
         scaler = MinMaxScaler(feature_range=(0, 1))
-        train_X = scaler.fit_transform(train_X.reshape(-1, self.n_cols)).reshape(-1, self.mx, self.n_cols)
+        train_X = scaler.fit_transform(
+            train_X.reshape(-1, self.n_cols)).reshape(-1, self.mx, self.n_cols)
         train_y = self.train_groups.first()['final_uo'].values
         train_y = to_categorical(train_y)
         return train_X, train_y
 
     def preprocess_input(self, input_df, test_y=None):
         # preprocessing test
-        self.input_groups = input_df.sort_values(by='minute', ascending=False).groupby(['id_partita'])
+        self.input_groups = input_df.sort_values(
+            by='minute', ascending=False).groupby(['id_partita'])
         test_X = np.array([np.pad(frame[[col for col in input_df.columns
                                          if col not in self.not_ts_cols]].values,
-                           pad_width=[(0, self.mx-len(frame)), (0, 0)],
-                           mode='constant',
-                           constant_values=self.special_value)
+                                  pad_width=[(0, self.mx-len(frame)), (0, 0)],
+                                  mode='constant',
+                                  constant_values=self.special_value)
                            for _, frame in self.input_groups]).reshape(-1, self.mx, self.n_cols)
         scaler = MinMaxScaler(feature_range=(0, 1))
-        test_X = scaler.fit_transform(test_X.reshape(-1, self.n_cols)).reshape(-1, self.mx, self.n_cols)
+        test_X = scaler.fit_transform(
+            test_X.reshape(-1, self.n_cols)).reshape(-1, self.mx, self.n_cols)
         if test_y is not None:
-            test_y_values = test_y.sort_values(by='minute', ascending=False).groupby(['id_partita']).first()['final_uo'].values
+            test_y_values = test_y.sort_values(by='minute', ascending=False).groupby([
+                'id_partita']).first()['final_uo'].values
             test_y_values = to_categorical(test_y_values)
             return test_X, test_y_values
         return test_X
 
-    def build_model(self):
+    def build_model(self, params=None):
         model = Sequential()
         model.add(Masking(mask_value=self.special_value,
                           input_shape=(self.mx, self.n_cols)))
         model.add(LSTM(30, input_shape=(self.mx, self.n_cols),
-                  return_sequences=True))
+                       return_sequences=True))
         model.add(Dropout(0.1))
         model.add(LSTM(20, return_sequences=True))
         model.add(Dropout(0.1))
@@ -127,20 +131,19 @@ class lstm(Model):
         tmp = self.input_groups.first()
         tmp['predictions'] = predictions
         tmp['probability_over'] = probabilities[:, 0]
-        merged = input_df.merge(tmp, on=['id_partita', 'minute'], suffixes=('', '_y'))
+        merged = input_df.merge(
+            tmp, on=['id_partita', 'minute'], suffixes=('', '_y'))
         return merged
 
 
 class xgb(Model):
 
-    def __init__(self, train_df, cat_col, outcome_cols, n_estimators=2000):
+    def __init__(self, train_df, cat_col, outcome_cols):
         self.train_df = train_df
         self.cat_col = cat_col
         self.outcome_cols = outcome_cols
-        self.n_estimators = n_estimators
 
     def preprocess_train(self):
-        # preprocessing lstm train
         train_y = self.train_df['final_uo'].values
         to_drop = self.cat_col + self.outcome_cols
         train_X = self.train_df.drop(columns=to_drop)
@@ -154,8 +157,10 @@ class xgb(Model):
             return test_X, test_y_values
         return test_X
 
-    def build_model(self):
-        model = XGBClassifier(n_estimators=2000)
+    def build_model(self, params=None):
+        if params is None:
+            params = {}
+        model = XGBClassifier(**params)
         return model
 
     def train(self, model, train_X, train_y, test_X=None, test_y=None):
