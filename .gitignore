@@ -1,8 +1,5 @@
 # custom folder
 scraping/
-prior_posterior_model/
-complete_model/
-models_pp/
 tests/
 discard
 
