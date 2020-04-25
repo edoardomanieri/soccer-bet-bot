@@ -15,7 +15,7 @@ def get_processed_train(reprocess_train_data, cat_col, file_path):
         training.save(train_df)
     else:
         train_df = pd.read_csv(
-            file_path + "/../dfs_pp/training_goals.csv", header=0, index_col=0)
+            file_path + "/../res/dataframes/training_goals.csv", header=0, index_col=0)
     return train_df
 
 

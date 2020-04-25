@@ -41,7 +41,7 @@ def nan_drop_test(df, thresh='half'):
 
 def get_input_data():
     file_path = os.path.dirname(os.path.abspath(__file__))
-    all_files = sorted(glob.glob(file_path + "/../csv/*.csv"),
+    all_files = sorted(glob.glob(file_path + "/../res/csv/*.csv"),
                        key=lambda x: int(x[x.index('/csv/') + 10:-4]))
     input_df = pd.read_csv(all_files[-1], index_col=None, header=0)
     if 'Unnamed: 0' in input_df.columns:
@@ -90,7 +90,7 @@ def drop_odds_col(df):
 def get_training_df():
     file_path = os.path.dirname(os.path.abspath(__file__))
     # import dataset
-    all_files = sorted(glob.glob(file_path + "/../csv/*.csv"),
+    all_files = sorted(glob.glob(file_path + "/../res/csv/*.csv"),
                        key=lambda x: int(x[x.index('/csv/') + 10:-4]))
     li = [pd.read_csv(filename, index_col=None, header=0)
           for filename in all_files[:-1]]

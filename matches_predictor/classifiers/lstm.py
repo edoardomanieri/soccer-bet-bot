@@ -87,11 +87,11 @@ class lstm(Model):
 
     def save_model(self, model):
         file_path = os.path.dirname(os.path.abspath(__file__))
-        model.save(file_path + "/../models_pp/goals.h5")
+        model.save(file_path + "/../res/models/goals.h5")
 
     def get_model(self):
         file_path = os.path.dirname(os.path.abspath(__file__))
-        return load_model(file_path + "/../models_pp/goals.h5")
+        return load_model(file_path + "/../res/models/goals.h5")
 
     def get_predict_proba(self, model, test_X, input_df):
         predictions = np.argmax(model.predict(test_X), axis=1)

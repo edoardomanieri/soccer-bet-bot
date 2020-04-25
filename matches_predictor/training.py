@@ -83,7 +83,7 @@ def drop_nan(df, thresh='half'):
 def get_df():
     file_path = os.path.dirname(os.path.abspath(__file__))
     # import dataset
-    all_files = sorted(glob.glob(file_path + "/../csv/*.csv"),
+    all_files = sorted(glob.glob(file_path + "/../res/csv/*.csv"),
                        key=lambda x: int(x[x.index('/csv/') + 10:-4]))
     li = [pd.read_csv(filename, index_col=None, header=0)
           for filename in all_files[:-1]]
@@ -112,7 +112,7 @@ def add_input_cols(df):
 def save(df):
     file_path = os.path.dirname(os.path.abspath(__file__))
     df.reset_index(drop=True).to_csv(
-        file_path + "/../dfs_pp/training_goals.csv")
+        file_path + "/../res/dataframes/training_goals.csv")
 
 
 def train_model(clf, params, test_X=None, test_y=None):

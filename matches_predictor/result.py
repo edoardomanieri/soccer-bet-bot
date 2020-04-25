@@ -18,7 +18,7 @@ def get_live_predictions(reprocess_train_data=False,
         train_result_df = result_utils.get_training_df()
     else:
         train_result_df = pd.read_csv(
-            file_path + "/../dfs_pp/training_result.csv", header=0, index_col=0)
+            file_path + "/../res/dataframes/training_result.csv", header=0, index_col=0)
 
     input_result_df = result_utils.process_input_data(
         input_result_df, train_result_df)
