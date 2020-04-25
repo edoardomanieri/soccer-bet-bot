@@ -39,7 +39,7 @@ def get_live_predictions(clf='xgb', params=None, reprocess_train_data=False,
     input_data.impute_nan(train_df, input_df)
     input_data.add_input_cols(input_df)
 
-    clf = classifiers.xgb(train_df, cat_col, outcome_cols)
+    clf = classifiers.xgb.xgb(train_df, cat_col, outcome_cols)
     # elif clf == 'lstm':
     #     clf = classifiers.lstm(train_df, cat_col, outcome_cols)
 

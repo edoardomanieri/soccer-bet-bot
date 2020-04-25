@@ -4,6 +4,7 @@ prior_posterior_model/
 complete_model/
 models_pp/
 tests/
+discard
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
