@@ -1,5 +1,5 @@
 from sklearn.metrics import accuracy_score
-from matches_predictor import test_set, train_set, utils
+from matches_predictor import test_set, train_set, prediction
 import random
 import itertools
 from sklearn.base import clone
@@ -88,7 +88,7 @@ def full_CV_pipeline(df, clf, cat_col, outcome_cols, cv=5):
         dropping_mask = df_temp['id_partita'].isin(sublist) & ~total_mask
         df_temp = df_temp.drop(df_temp[dropping_mask].index)
         train_df, test_df = _split_test_train(df_temp, sublist)
-        train_set.preprocessing.execute(train_df, cat_col)
+        train_set.preprocessing.execute(train_df, cat_col, prod=False)
         test_y, test_prematch_odds, test_live_odds = test_set.preprocessing.execute(
             test_df, train_df)
         test_X = test_df.drop(columns=cat_col)
@@ -99,8 +99,8 @@ def full_CV_pipeline(df, clf, cat_col, outcome_cols, cv=5):
         probabilities = clf.predict_proba(test_X)
         test_df['predictions'] = predictions
         test_df['probability_over'] = probabilities[:, 0]
-        predictions_df = utils.get_complete_predictions_df(test_df)
-        predictions_df = utils.get_posterior_predictions(
+        predictions_df = prediction.get_complete_predictions_df(test_df)
+        predictions_df = prediction.get_posterior_predictions(
             predictions_df, test_prematch_odds)
         predictions_df = predictions_df.merge(
             test_y, on=['id_partita', 'minute'])

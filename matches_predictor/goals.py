@@ -1,5 +1,5 @@
 import pandas as pd
-from matches_predictor import utils
+from matches_predictor import prediction
 from matches_predictor import train_set
 from matches_predictor import input_streaming
 import os
@@ -30,7 +30,7 @@ def get_live_predictions(reprocess=False, retrain=False, res_path="../../res/csv
     clf = train_set.modeling.get_prod_model()
     test_X = input_df.drop(columns=cat_col)
     input_df = train_set.modeling.get_predict_proba(clf, test_X, input_df)
-    predictions_df = utils.get_complete_predictions_df(input_df)
-    predictions_df = utils.get_posterior_predictions(predictions_df,
-                                                     input_prematch_odds)
+    predictions_df = prediction.get_complete_predictions_df(input_df)
+    predictions_df = prediction.get_posterior_predictions(predictions_df,
+                                                          input_prematch_odds)
     return predictions_df

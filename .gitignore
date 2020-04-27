@@ -1,7 +1,9 @@
-# custom folder
+# custom
 scraping/
 trials/
 discard
+matches_predictor/result_utils.py
+matches_predictor/result.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

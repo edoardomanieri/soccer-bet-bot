@@ -94,18 +94,19 @@ def _drop_odds_cols(df):
     _drop_live_odds_col(df)
 
 
-def _save(df):
+def _save_dev(df):
     file_path = os.path.dirname(os.path.abspath(__file__))
     df.reset_index(drop=True).to_csv(
         file_path + "/../../res/dataframes/training_goals.csv")
 
 
 ########################### main function #############
-def execute(train_df, cat_col):
+def execute(train_df, cat_col, prod=True):
     _to_numeric(train_df, cat_col)
     _drop_odds_cols(train_df)
     _drop_nan(train_df)
     _impute_nan(train_df)
     _add_outcome_col(train_df)
     _add_input_cols(train_df)
-    _save(train_df)
+    if prod:
+        _save(train_df)
