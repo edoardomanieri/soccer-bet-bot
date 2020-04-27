@@ -44,7 +44,7 @@ def _get_revenues(df, thresh=0.75):
     res = 0
     for _, row in df.iterrows():
         if row['probability_final_under'] >= thresh or row['probability_final_under'] <= 1-thresh:
-            if row['final_uo'] == row['prediction_final_over']:
+            if row['final_uo'] == row['prediction_final_encoded']:
                 if row['prediction_final'] == 'under':
                     if row['live_odd_under'] > 1:
                         res += (row['live_odd_under'] - 1)
@@ -57,7 +57,7 @@ def _get_revenues(df, thresh=0.75):
 
 
 def _get_insights(df):
-    predictions_final = df['prediction_final_over']
+    predictions_final = df['prediction_final_encoded']
     true_y = df['final_uo']
     acc = accuracy_score(true_y, predictions_final)
     print(f'Accuracy: {acc:.2f} \n')
@@ -65,8 +65,10 @@ def _get_insights(df):
     print(f'Revenues: {rev:.2f} \n')
 
 
-def _get_accuracy(df):
-    predictions_final = df['prediction_final_over']
+def _get_accuracy(df, threshold=0.5):
+    df = df.loc[(df['probability_final_over'] > threshold) |
+                (df['probability_final_over'] < (1-threshold)), :]
+    predictions_final = df['prediction_final_encoded']
     true_y = df['final_uo']
     acc = accuracy_score(true_y, predictions_final)
     return acc
@@ -78,7 +80,13 @@ def _partition(list_in, n):
     return [list_in[i::n] for i in range(n)]
 
 
-def full_CV_pipeline(df, clf, cat_col, outcome_cols, cv=5):
+def _show_df(input_df):
+    final_df = input_df.loc[:, ['minute', 'home_score',
+                                'away_score', 'probability_final_over', 'prediction_final_encoded', 'final_uo']]
+    return final_df
+
+
+def full_CV_pipeline(df, clf, cat_col, outcome_cols, cv=5, threshold=0.5):
     id_partita_test, total_mask = _get_ids_for_test(df, False, False)
     cv_lists = _partition(id_partita_test, cv)
     mae_folds = []
@@ -99,19 +107,20 @@ def full_CV_pipeline(df, clf, cat_col, outcome_cols, cv=5):
         probabilities = clf.predict_proba(test_X)
         test_df['predictions'] = predictions
         test_df['probability_over'] = probabilities[:, 0]
-        predictions_df = prediction.get_complete_predictions_df(test_df)
-        predictions_df = prediction.get_posterior_predictions(
-            predictions_df, test_prematch_odds)
+        predictions_df = prediction.prematch_odds_based(
+            test_df, test_prematch_odds)
         predictions_df = predictions_df.merge(
             test_y, on=['id_partita', 'minute'])
         predictions_df = predictions_df.merge(
             test_live_odds, on=['minute', 'id_partita'])
-        accuracy = _get_accuracy(predictions_df)
+        print(_show_df(predictions_df).head(5))
+        accuracy = _get_accuracy(predictions_df, threshold)
         mae_folds.append(accuracy)
-    return mae_folds, sum(mae_folds)/cv
+        avg_accuracy = sum(mae_folds)/cv
+    return mae_folds, avg_accuracy
 
 
-def randomizedsearch_CV(df, estimator, cat_col, outcome_cols, param_dist, cv=5, trials=20):
+def randomizedsearch_CV(df, estimator, cat_col, outcome_cols, param_dist, cv=5, threshold=0.5, trials=20):
     m = 0
     best_params = {}
     param_dict_list = []
@@ -125,7 +134,7 @@ def randomizedsearch_CV(df, estimator, cat_col, outcome_cols, param_dist, cv=5, 
         estimator.set_params(**param_dict)
         selected_estimator = clone(estimator)
         _, res = full_CV_pipeline(
-            df, selected_estimator, cat_col, outcome_cols, cv=cv)
+            df, selected_estimator, cat_col, outcome_cols, cv=cv, threshold=threshold)
         print(param_dict)
         print(res)
         if res > m:

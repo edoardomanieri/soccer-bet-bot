@@ -13,7 +13,7 @@ def _drop_nan(df, thresh='half'):
     df.dropna(axis=0, thresh=thresh, inplace=True)
 
     # eliminate rows with nans on target or on important columns
-    important_cols = ['id_partita']
+    important_cols = ['id_partita', 'minute']
     df.dropna(axis=0, subset=important_cols, how='any', inplace=True)
 
     # drop matches already in over
@@ -102,12 +102,12 @@ def _impute_nan(train_df, test_df, thresh='half'):
 
 
 def execute(input_df, train_df, cat_col):
+    _to_numeric(input_df, cat_col)
+    _drop_nan(input_df)
+    _impute_nan(train_df, input_df)
     _normalize_prematch_odds(input_df)
     input_prematch_odds = _pop_prematch_odds_data(input_df)
     input_live_odds = _pop_live_odds_data(input_df)
     _drop_outcome_cols(input_df)
-    _to_numeric(input_df, cat_col)
-    _drop_nan(input_df)
-    _impute_nan(train_df, input_df)
     _add_input_cols(input_df)
     return input_prematch_odds

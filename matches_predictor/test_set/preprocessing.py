@@ -94,7 +94,7 @@ def _impute_nan(train_df, test_df, thresh='half'):
 
 def _add_outcome_col(df):
     df['final_uo'] = np.where(
-        df['home_final_score'] + df['away_final_score'] > 2, 0, 1)
+        df['home_final_score'] + df['away_final_score'] > 2, 1, 0)
 
 
 def _drop_outcome_cols(df):
@@ -109,12 +109,12 @@ def _add_input_cols(df):
 
 
 def execute(test_df, train_df):
-    _normalize_prematch_odds(test_df)
-    test_prematch_odds = _pop_prematch_odds_data(test_df)
-    test_live_odds = _pop_live_odds_data(test_df)
     _drop_nan(test_df)
     _add_outcome_col(test_df)
     _impute_nan(train_df, test_df)
+    _normalize_prematch_odds(test_df)
+    test_prematch_odds = _pop_prematch_odds_data(test_df)
+    test_live_odds = _pop_live_odds_data(test_df)
     _add_input_cols(test_df)
     test_y = test_df[['id_partita', 'minute', 'final_uo']].copy()
     _drop_outcome_cols(test_df)
