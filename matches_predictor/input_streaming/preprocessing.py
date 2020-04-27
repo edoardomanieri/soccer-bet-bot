@@ -101,6 +101,47 @@ def _impute_nan(train_df, test_df, thresh='half'):
     test_df.dropna(inplace=True)
 
 
+def _add_prematch_vars(training_df, test_df):
+
+    test_df['avg_camp_goals'] = 0
+    campionati = test_df['campionato'].unique()
+
+    for camp in campionati:
+        if camp not in training_df['campionato'].unique():
+            test_df.loc[test_df['campionato'] == camp,
+                        'avg_camp_goals'] = training_df['avg_camp_goals'].mean()
+        else:
+            test_df.loc[test_df['campionato'] == camp, 'avg_camp_goals'] = training_df.loc[training_df['campionato'] == camp, :].reset_index()[
+                'avg_camp_goals'][0]
+
+    test_df['home_avg_goal_fatti'] = 0
+    test_df['away_avg_goal_fatti'] = 0
+    test_df['home_avg_goal_subiti'] = 0
+    test_df['away_avg_goal_subiti'] = 0
+
+    squadre = set((test_df['home'].unique().tolist() +
+                   test_df['away'].unique().tolist()))
+    for team in squadre:
+        if team not in training_df['home'].unique() or team not in training_df['away'].unique():
+            test_df.loc[test_df['home'] == team,
+                        'home_avg_goal_fatti'] = training_df['home_avg_goal_fatti'].mean()
+            test_df.loc[test_df['away'] == team,
+                        'away_avg_goal_fatti'] = training_df['away_avg_goal_fatti'].mean()
+            test_df.loc[test_df['home'] == team,
+                        'home_avg_goal_subiti'] = training_df['home_avg_goal_subiti'].mean()
+            test_df.loc[test_df['away'] == team,
+                        'away_avg_goal_subiti'] = training_df['away_avg_goal_subiti'].mean()
+        else:
+            test_df.loc[test_df['home'] == team, 'home_avg_goal_fatti'] = training_df.loc[training_df['home'] == team, :].reset_index()[
+                'home_avg_goal_fatti'][0]
+            test_df.loc[test_df['away'] == team, 'away_avg_goal_fatti'] = training_df.loc[training_df['away'] == team, :].reset_index()[
+                'away_avg_goal_fatti'][0]
+            test_df.loc[test_df['home'] == team, 'home_avg_goal_subiti'] = training_df.loc[training_df['home'] == team, :].reset_index()[
+                'home_avg_goal_subiti'][0]
+            test_df.loc[test_df['away'] == team, 'away_avg_goal_subiti'] = training_df.loc[training_df['away'] == team, :].reset_index()[
+                'away_avg_goal_subiti'][0]
+
+
 def execute(input_df, train_df, cat_col):
     _to_numeric(input_df, cat_col)
     _drop_nan(input_df)
@@ -109,5 +150,6 @@ def execute(input_df, train_df, cat_col):
     input_prematch_odds = _pop_prematch_odds_data(input_df)
     input_live_odds = _pop_live_odds_data(input_df)
     _drop_outcome_cols(input_df)
+    _add_prematch_vars(train_df, input_df)
     _add_input_cols(input_df)
     return input_prematch_odds

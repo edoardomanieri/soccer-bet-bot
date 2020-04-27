@@ -61,11 +61,71 @@ def _drop_nan(df, thresh='half'):
     df.drop(df[over_mask].index, inplace=True)
 
 
+def _add_prematch_vars(df):
+    df['avg_camp_goals'] = 0
+    campionati = df['campionato'].unique()
+
+    for camp in campionati:
+        if camp not in df['campionato'].unique():
+            df.loc[df['campionato'] == camp,
+                   'avg_camp_goals'] = df['avg_camp_goals'].mean()
+        else:
+            df.loc[df['campionato'] == camp, 'avg_camp_goals'] = df.loc[df['campionato']
+                                                                        == camp, :].reset_index()['avg_camp_goals'][0]
+
+    df['home_avg_goal_fatti'] = 0
+    df['away_avg_goal_fatti'] = 0
+    df['home_avg_goal_subiti'] = 0
+    df['away_avg_goal_subiti'] = 0
+
+    squadre = set((df['home'].unique().tolist() +
+                   df['away'].unique().tolist()))
+    for team in squadre:
+        if team not in df['home'].unique() or team not in df['away'].unique():
+            df.loc[df['home'] == team,
+                   'home_avg_goal_fatti'] = df['home_avg_goal_fatti'].mean()
+            df.loc[df['away'] == team,
+                   'away_avg_goal_fatti'] = df['away_avg_goal_fatti'].mean()
+            df.loc[df['home'] == team,
+                   'home_avg_goal_subiti'] = df['home_avg_goal_subiti'].mean()
+            df.loc[df['away'] == team,
+                   'away_avg_goal_subiti'] = df['away_avg_goal_subiti'].mean()
+        else:
+            df.loc[df['home'] == team, 'home_avg_goal_fatti'] = df.loc[df['home']
+                                                                       == team, :].reset_index()['home_avg_goal_fatti'][0]
+            df.loc[df['away'] == team, 'away_avg_goal_fatti'] = df.loc[df['away']
+                                                                       == team, :].reset_index()['away_avg_goal_fatti'][0]
+            df.loc[df['home'] == team, 'home_avg_goal_subiti'] = df.loc[df['home']
+                                                                        == team, :].reset_index()['home_avg_goal_subiti'][0]
+            df.loc[df['away'] == team, 'away_avg_goal_subiti'] = df.loc[df['away']
+                                                                        == team, :].reset_index()['away_avg_goal_subiti'][0]
+
+
 def _to_numeric(df, cat_col):
     # change data type
     for col in df.columns:
         if col not in cat_col:
             df[col] = pd.to_numeric(df[col])
+
+
+def _to_categorical(df, features_list):
+    for feature in features_list:
+        df[feature] = df[feature].astype('category')
+
+
+def _generate_dummies(df, features_list):
+    df_new = df.copy()
+    for feature in features_list:
+        df_new = pd.concat([df_new, pd.get_dummies(
+            df[feature], drop_first=True, prefix=feature)], axis=1).copy()
+        # df_new = df_new.drop(columns=[feature])
+    return df_new
+
+
+def _one_hot_encoding(df, cat_vars):
+    _to_categorical(df, cat_vars)
+    df = _generate_dummies(df, cat_vars)
+    return df
 
 
 def _add_outcome_col(df):
@@ -107,6 +167,7 @@ def execute(train_df, cat_col, prod=True):
     _drop_nan(train_df)
     _impute_nan(train_df)
     _add_outcome_col(train_df)
+    _add_prematch_vars(train_df)
     _add_input_cols(train_df)
     if prod:
         _save(train_df)

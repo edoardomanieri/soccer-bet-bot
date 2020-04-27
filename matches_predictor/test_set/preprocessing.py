@@ -44,6 +44,47 @@ def _pop_prematch_odds_data(input_df):
     return prematch_odds_input
 
 
+def _add_prematch_vars(training_df, test_df):
+
+    test_df['avg_camp_goals'] = 0
+    campionati = test_df['campionato'].unique()
+
+    for camp in campionati:
+        if camp not in training_df['campionato'].unique():
+            test_df.loc[test_df['campionato'] == camp,
+                        'avg_camp_goals'] = training_df['avg_camp_goals'].mean()
+        else:
+            test_df.loc[test_df['campionato'] == camp, 'avg_camp_goals'] = training_df.loc[training_df['campionato'] == camp, :].reset_index()[
+                'avg_camp_goals'][0]
+
+    test_df['home_avg_goal_fatti'] = 0
+    test_df['away_avg_goal_fatti'] = 0
+    test_df['home_avg_goal_subiti'] = 0
+    test_df['away_avg_goal_subiti'] = 0
+
+    squadre = set((test_df['home'].unique().tolist() +
+                   test_df['away'].unique().tolist()))
+    for team in squadre:
+        if team not in training_df['home'].unique() or team not in training_df['away'].unique():
+            test_df.loc[test_df['home'] == team,
+                        'home_avg_goal_fatti'] = training_df['home_avg_goal_fatti'].mean()
+            test_df.loc[test_df['away'] == team,
+                        'away_avg_goal_fatti'] = training_df['away_avg_goal_fatti'].mean()
+            test_df.loc[test_df['home'] == team,
+                        'home_avg_goal_subiti'] = training_df['home_avg_goal_subiti'].mean()
+            test_df.loc[test_df['away'] == team,
+                        'away_avg_goal_subiti'] = training_df['away_avg_goal_subiti'].mean()
+        else:
+            test_df.loc[test_df['home'] == team, 'home_avg_goal_fatti'] = training_df.loc[training_df['home'] == team, :].reset_index()[
+                'home_avg_goal_fatti'][0]
+            test_df.loc[test_df['away'] == team, 'away_avg_goal_fatti'] = training_df.loc[training_df['away'] == team, :].reset_index()[
+                'away_avg_goal_fatti'][0]
+            test_df.loc[test_df['home'] == team, 'home_avg_goal_subiti'] = training_df.loc[training_df['home'] == team, :].reset_index()[
+                'home_avg_goal_subiti'][0]
+            test_df.loc[test_df['away'] == team, 'away_avg_goal_subiti'] = training_df.loc[training_df['away'] == team, :].reset_index()[
+                'away_avg_goal_subiti'][0]
+
+
 def _pop_live_odds_data(input_df):
     live_odds_input = input_df.loc[:, [
         'id_partita', 'minute', 'live_odd_under', 'live_odd_over']].copy()
@@ -115,8 +156,9 @@ def execute(test_df, train_df):
     _normalize_prematch_odds(test_df)
     test_prematch_odds = _pop_prematch_odds_data(test_df)
     test_live_odds = _pop_live_odds_data(test_df)
+    _add_prematch_vars(train_df, test_df)
     _add_input_cols(test_df)
-    test_y = test_df[['id_partita', 'minute', 'final_uo']].copy()
+    test_y = test_df.loc[:, ['id_partita', 'minute', 'final_uo']]
     _drop_outcome_cols(test_df)
     test_y = test_y.merge(test_df, on=['id_partita', 'minute']).loc[:, [
         'id_partita', 'minute', 'final_uo']].copy()
