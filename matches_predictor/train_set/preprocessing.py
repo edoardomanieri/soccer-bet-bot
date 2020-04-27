@@ -94,7 +94,7 @@ def _drop_odds_cols(df):
     _drop_live_odds_col(df)
 
 
-def _save_dev(df):
+def _save(df):
     file_path = os.path.dirname(os.path.abspath(__file__))
     df.reset_index(drop=True).to_csv(
         file_path + "/../../res/dataframes/training_goals.csv")
