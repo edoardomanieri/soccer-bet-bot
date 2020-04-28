@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
-from matches_predictor import train_set
-from matches_predictor import input_streaming
+from matches_predictor import train_set, input_stream
 import os
 
 
@@ -29,31 +28,38 @@ def prematch_odds_based(input_pred_df, input_prematch_odds_df):
     return res_df
 
 
-def get_live_predictions(reprocess=False, retrain=False, res_path="../../res/csv"):
+def get_predict_proba(clf, test_X, df):
+    predictions = clf.predict(test_X)
+    probabilities = clf.predict_proba(test_X)
+    df['predictions'] = predictions
+    df['probability_over'] = probabilities[:, 1]
+
+
+def get_live_predictions(reprocess=False, retrain=False, res_path="../res/csv"):
 
     file_path = os.path.dirname(os.path.abspath(__file__))
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
     outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
 
     if reprocess:
-        train_df = train_set.retrieving.get_df(res_path)
-        train_set.preprocessing.execute(train_df, cat_col)
+        train_df = train_set.Retrieving.starting_df(res_path)
+        train_set.Preprocessing.execute(train_df, cat_col)
 
     train_df = pd.read_csv(
         f"{file_path}/../res/dataframes/training_goals.csv", header=0, index_col=0)
 
-    input_df = input_streaming.retrieving.get_df(res_path)
-    input_prematch_odds = input_streaming.preprocessing.execute(
+    input_df = input_stream.Retrieving.starting_df(res_path)
+    input_prematch_odds = input_stream.Preprocessing.execute(
         input_df, train_df, cat_col)
 
     if retrain:
-        clf = train_set.modeling.get_dev_model()
-        train_set.modeling.train_model(
+        clf = train_set.Modeling.get_dev_model()
+        train_set.Modeling.train_model(
             train_df, clf, cat_col, outcome_cols, prod=True)
 
-    clf = train_set.modeling.get_prod_model()
+    clf = train_set.Modeling.get_prod_model()
     test_X = input_df.drop(columns=cat_col)
-    input_df = train_set.modeling.get_predict_proba(clf, test_X, input_df)
+    get_predict_proba(clf, test_X, input_df)
     predictions_df = build_output_df(input_df)
     predictions_df = prematch_odds_based(predictions_df,
                                          input_prematch_odds)

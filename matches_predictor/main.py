@@ -1,4 +1,4 @@
-from matches_predictor import test_set
+from matches_predictor import test_set, validation
 from xgboost import XGBClassifier
 
 if __name__ == "__main__":
@@ -14,8 +14,9 @@ if __name__ == "__main__":
         'max_depth': [2, 3, 4, 5]
     }
     clf = XGBClassifier(**params)
-    df = test_set.retrieving.get_df(res_path='../../res/csv', cat_col=cat_col)
+    df = test_set.Retrieving.starting_df(
+        res_path='../res/csv', cat_col=cat_col)
 
-    best_acc, best_params = test_set.validate.randomizedsearch_CV(
-        df, clf, cat_col, outcome_cols, params, cv=5, trials=1, threshold=0.7)
+    best_acc, best_params = validation.randomizedsearch_CV(
+        df, clf, cat_col, outcome_cols, params, cv=5, trials=5, threshold=0.7)
     print(best_acc)

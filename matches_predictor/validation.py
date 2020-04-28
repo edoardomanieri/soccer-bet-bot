@@ -96,17 +96,14 @@ def full_CV_pipeline(df, clf, cat_col, outcome_cols, cv=5, threshold=0.5):
         dropping_mask = df_temp['id_partita'].isin(sublist) & ~total_mask
         df_temp = df_temp.drop(df_temp[dropping_mask].index)
         train_df, test_df = _split_test_train(df_temp, sublist)
-        train_set.preprocessing.execute(train_df, cat_col, prod=False)
-        test_y, test_prematch_odds, test_live_odds = test_set.preprocessing.execute(
+        train_set.Preprocessing.execute(train_df, cat_col, prod=False)
+        test_y, test_prematch_odds, test_live_odds = test_set.Preprocessing.execute(
             test_df, train_df)
         test_X = test_df.drop(columns=cat_col)
-        train_set.modeling.train_model(
+        train_set.Modeling.train_model(
             train_df, clf, cat_col, outcome_cols, prod=False)
-        clf = train_set.modeling.get_dev_model()
-        predictions = clf.predict(test_X)
-        probabilities = clf.predict_proba(test_X)
-        test_df['predictions'] = predictions
-        test_df['probability_over'] = probabilities[:, 0]
+        clf = train_set.Modeling.get_dev_model()
+        prediction.get_predict_proba(clf, test_X, test_df)
         predictions_df = prediction.prematch_odds_based(
             test_df, test_prematch_odds)
         predictions_df = predictions_df.merge(
@@ -141,5 +138,5 @@ def randomizedsearch_CV(df, estimator, cat_col, outcome_cols, param_dist, cv=5, 
             m = res
             best_params = param_dict
             best_estimator = clone(selected_estimator)
-    train_set.modeling.save_model(best_estimator)
+    train_set.Modeling.save_model(best_estimator)
     return m, best_params
