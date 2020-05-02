@@ -4,6 +4,7 @@ trials/
 discard
 matches_predictor/result_utils.py
 matches_predictor/result.py
+keys.js
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
