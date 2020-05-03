@@ -12,6 +12,11 @@ def build_output_df(input_df):
     return final_df
 
 
+def consumer_outuput(input_df):
+    final_df = input_df.loc[:, ['minute', 'home', 'away', 'prediction_final', 'probability_final_over']]
+    return final_df
+
+
 def prematch_odds_based(input_pred_df, input_prematch_odds_df):
     # al 15 minuto probabilità pesate 50-50
     rate = 0.6 / 90
@@ -64,3 +69,30 @@ def get_live_predictions(reprocess=False, retrain=False, res_path="../res/csv"):
     predictions_df = prematch_odds_based(predictions_df,
                                          input_prematch_odds)
     return predictions_df
+
+
+def predictions_consumer(in_q, out_q):
+    res_path = "../res/csv"
+    file_path = os.path.dirname(os.path.abspath(__file__))
+    cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
+    outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
+    train_df = train_set.Retrieving.starting_df(res_path)
+    train_set.Preprocessing.execute(train_df, cat_col)
+    train_df = pd.read_csv(f"{file_path}/../res/dataframes/training_goals.csv", header=0, index_col=0)
+    clf = train_set.Modeling.get_dev_model()
+    train_set.Modeling.train_model(train_df, clf, cat_col, outcome_cols, prod=True)
+
+    while True:
+        input_df = in_q.get()
+        input_prematch_odds = input_stream.Preprocessing.execute(
+            input_df, train_df, cat_col)
+        clf = train_set.Modeling.get_prod_model()
+        test_X = input_df.drop(columns=cat_col)
+        get_predict_proba(clf, test_X, input_df)
+        predictions_df = prematch_odds_based(input_df, input_prematch_odds)
+        final_df = consumer_outuput(predictions_df)
+        out_q.put(final_df)
+        print(final_df)
+        in_q.task_done()
+
+
