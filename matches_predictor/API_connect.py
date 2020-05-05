@@ -83,7 +83,10 @@ def get_match_statistics(fixture_id):
     response = requests.request("GET", url, headers=headers)
     return response
 
-
+''' missing:
+home_punizioni', 'away_punizioni', 'home_rimesse_laterali','away_rimesse_laterali'
+'home_contrasti', 'away_contrasti', 'home_attacchi', 'away_attacchi',
+'home_attacchi_pericolosi', 'away_attacchi_pericolosi'''
 def stat_to_dict(response, match_dict):
     resp_dict = json.loads(response)
     match_dict['home_tiri_in_porta'] = int(resp_dict['api']['statistics']['Shots on Goal']['home'])

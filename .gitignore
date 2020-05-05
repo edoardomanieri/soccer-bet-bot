@@ -5,6 +5,7 @@ discard
 matches_predictor/result_utils.py
 matches_predictor/result.py
 keys.js
+certs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

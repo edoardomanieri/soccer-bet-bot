@@ -4,6 +4,17 @@ from matches_predictor import train_set, input_stream
 import os
 
 
+class Prediction():
+
+    def __init__(self, minute, home, away, market_name, prediction, probability):
+        self.minute = minute
+        self.home = home
+        self.away = away
+        self.market_name = market_name
+        self.prediction = prediction
+        self.probability = probability
+
+
 def build_output_df(input_df):
     final_df = input_df.loc[:, ['id_partita', 'home', 'away', 'minute', 'home_score',
                                 'away_score', 'predictions', 'probability_over']]\
@@ -11,10 +22,6 @@ def build_output_df(input_df):
         .groupby(['id_partita']).first().reset_index()
     return final_df
 
-
-def consumer_outuput(input_df):
-    final_df = input_df.loc[:, ['minute', 'home', 'away', 'prediction_final', 'probability_final_over']]
-    return final_df
 
 
 def prematch_odds_based(input_pred_df, input_prematch_odds_df):
@@ -71,7 +78,7 @@ def get_live_predictions(reprocess=False, retrain=False, res_path="../res/csv"):
     return predictions_df
 
 
-def predictions_consumer(in_q, out_q):
+def predictions_consumer(in_q, out_q, threshold):
     res_path = "../res/csv"
     file_path = os.path.dirname(os.path.abspath(__file__))
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
@@ -90,9 +97,13 @@ def predictions_consumer(in_q, out_q):
         test_X = input_df.drop(columns=cat_col)
         get_predict_proba(clf, test_X, input_df)
         predictions_df = prematch_odds_based(input_df, input_prematch_odds)
-        final_df = consumer_outuput(predictions_df)
-        out_q.put(final_df)
-        print(final_df)
+        minute = predictions_df.loc[:, 'minute'][0]
+        home = predictions_df.loc[:, 'home'][0]
+        away = predictions_df.loc[:, 'away'][0]
+        market_name = predictions_df.loc[:, 'market_name'][0]
+        prediction = predictions_df.loc[:, 'prediction_final'][0]
+        probability = predictions_df.loc[:, 'probability_final_over'][0]
+        prediction_obj = Prediction(minute, home, away, market_name, prediction, probability)
+        if probability > threshold or probability < 1-threshold:
+            out_q.put(prediction_obj)
         in_q.task_done()
-
-
