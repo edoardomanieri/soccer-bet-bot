@@ -144,9 +144,10 @@ class Preprocessing(base.Preprocessing):
                          'away_final_score', 'final_uo'], inplace=True)
 
     @staticmethod
-    def execute(test_df, train_df):
+    def execute(test_df, train_df, missing_cols):
         Preprocessing.drop_nan(test_df)
         Preprocessing.add_outcome_col(test_df)
+        Preprocessing.drop_API_missing_cols(test_df, missing_cols)
         Preprocessing.impute_nan(train_df, test_df)
         Preprocessing.normalize_prematch_odds(test_df)
         test_prematch_odds = Preprocessing.pop_prematch_odds_data(test_df)

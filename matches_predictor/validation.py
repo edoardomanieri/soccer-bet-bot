@@ -86,7 +86,7 @@ def _show_df(input_df):
     return final_df
 
 
-def full_CV_pipeline(df, clf, cat_col, outcome_cols, cv=5, threshold=0.5):
+def full_CV_pipeline(df, clf, cat_col, missing_cols, outcome_cols, cv=5, threshold=0.5):
     id_partita_test, total_mask = _get_ids_for_test(df, False, False)
     cv_lists = _partition(id_partita_test, cv)
     mae_folds = []
@@ -96,9 +96,9 @@ def full_CV_pipeline(df, clf, cat_col, outcome_cols, cv=5, threshold=0.5):
         dropping_mask = df_temp['id_partita'].isin(sublist) & ~total_mask
         df_temp = df_temp.drop(df_temp[dropping_mask].index)
         train_df, test_df = _split_test_train(df_temp, sublist)
-        train_set.Preprocessing.execute(train_df, cat_col, prod=False)
+        train_set.Preprocessing.execute(train_df, cat_col, missing_cols, prod=False)
         test_y, test_prematch_odds, test_live_odds = test_set.Preprocessing.execute(
-            test_df, train_df)
+            test_df, train_df, missing_cols)
         test_X = test_df.drop(columns=cat_col)
         train_set.Modeling.train_model(
             train_df, clf, cat_col, outcome_cols, prod=False)
@@ -117,7 +117,7 @@ def full_CV_pipeline(df, clf, cat_col, outcome_cols, cv=5, threshold=0.5):
     return mae_folds, avg_accuracy
 
 
-def randomizedsearch_CV(df, estimator, cat_col, outcome_cols, param_dist, cv=5, threshold=0.5, trials=20):
+def randomizedsearch_CV(df, estimator, cat_col, missing_cols, outcome_cols, param_dist, cv=5, threshold=0.5, trials=20):
     m = 0
     best_params = {}
     param_dict_list = []
@@ -131,7 +131,7 @@ def randomizedsearch_CV(df, estimator, cat_col, outcome_cols, param_dist, cv=5, 
         estimator.set_params(**param_dict)
         selected_estimator = clone(estimator)
         _, res = full_CV_pipeline(
-            df, selected_estimator, cat_col, outcome_cols, cv=cv, threshold=threshold)
+            df, selected_estimator, cat_col, missing_cols, outcome_cols, cv=cv, threshold=threshold)
         print(param_dict)
         print(res)
         if res > m:

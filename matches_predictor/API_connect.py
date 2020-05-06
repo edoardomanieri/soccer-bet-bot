@@ -1,6 +1,7 @@
 import requests
 import json
 import pandas as pd
+import numpy as np
 import time
 
 '''date', 'id_partita', 'minute', 'home', 'away', 'campionato',
@@ -73,6 +74,46 @@ def basic_info_to_dict(response):
     return res
 
 
+def get_label_dict():
+    label_dict = {}
+    keys = json.load(open("../keys.js"))
+    url = f"https://api-football-v1.p.rapidapi.com/v2/odds/labels/"
+    headers = {
+        'x-rapidapi-host': keys['x-rapidapi-host'],
+        'x-rapidapi-key': keys['x-rapidapi-key']
+        }
+    response = requests.request("GET", url, headers=headers)
+    resp_dict = json.loads(response)
+    labels = resp_dict['api']['labels']
+    for label in labels:
+        label_dict[label['label']] = label['id']
+    return label_dict
+
+
+def get_prematch_odds(fixture_id, label_id):
+    keys = json.load(open("../keys.js"))
+    url = f"https://api-football-v1.p.rapidapi.com/v2/odds/fixture/{fixture_id}/label/{label_id}"
+    headers = {
+        'x-rapidapi-host': keys['x-rapidapi-host'],
+        'x-rapidapi-key': keys['x-rapidapi-key']
+        }
+    response = requests.request("GET", url, headers=headers)
+    return response
+
+
+def prematch_odds_uo_to_dict(response, match_dict):
+    resp_dict = json.loads(response)
+    match_dict['odd_under'] = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values'][0]['odd']
+    match_dict['odd_over'] = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values'][1]['odd']
+
+
+def prematch_odds_1x2_to_dict(response, match_dict):
+    resp_dict = json.loads(response)
+    match_dict['odd_1'] = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values'][0]['odd']
+    match_dict['odd_X'] = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values'][1]['odd']
+    match_dict['odd_2'] = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values'][3]['odd']
+
+
 def get_match_statistics(fixture_id):
     keys = json.load(open("../keys.js"))
     url = f"https://api-football-v1.p.rapidapi.com/v2/statistics/fixture/{fixture_id}"
@@ -83,10 +124,7 @@ def get_match_statistics(fixture_id):
     response = requests.request("GET", url, headers=headers)
     return response
 
-''' missing:
-home_punizioni', 'away_punizioni', 'home_rimesse_laterali','away_rimesse_laterali'
-'home_contrasti', 'away_contrasti', 'home_attacchi', 'away_attacchi',
-'home_attacchi_pericolosi', 'away_attacchi_pericolosi'''
+
 def stat_to_dict(response, match_dict):
     resp_dict = json.loads(response)
     match_dict['home_tiri_in_porta'] = int(resp_dict['api']['statistics']['Shots on Goal']['home'])
@@ -117,15 +155,60 @@ def stat_to_dict(response, match_dict):
     match_dict['away_passaggi_completati'] = int(resp_dict['api']['statistics']['Passes accurate']['away'])
 
 
-def live_matches_producer(out_q):
+def save(df):
+    fixture_id = df.loc[:, 'fixture_id'][0]
+    with open("./fixture_ids", "r") as f:
+        fixture_ids = [line.replace("\n", "").strip() for line in f.readlines()]
+    if fixture_id not in fixture_ids:
+        with open("./fixture_ids", "a") as f:
+            f.write(f"{fixture_id}\n")
+    df_before = pd.read_csv('api-stats.csv', index_col=0)
+    df['home_final_score'] = np.nan
+    df['away_final_score'] = np.nan
+    df_new = pd.concat([df_before, df])
+    df_new.to_csv('api-stats.csv')
+
+
+def ended_matches():
+    df = pd.read_csv('api-stats.csv', index_col=0)
+    with open("./fixture_ids", "r") as f:
+        fixture_ids = [line.replace("\n", "").strip() for line in f.readlines()]
+    keys = json.load(open("../keys.js"))
+    headers = {
+        'x-rapidapi-host': keys['x-rapidapi-host'],
+        'x-rapidapi-key': keys['x-rapidapi-key']
+        }
+    for fixture_id in fixture_ids:
+        url = f"https://api-football-v1.p.rapidapi.com/v2/fixtures/id/{fixture_id}"
+        response = requests.request("GET", url, headers=headers)
+        resp_dict = json.loads(response)
+        status = resp_dict['api']['status'] # double check
+        if status == 'Match Finished':
+            df.loc[df['fixture_id'] == fixture_id, 'home_final_score'] = int(resp_dict['api']['goalsHomeTeam'])
+            df.loc[df['fixture_id'] == fixture_id, 'away_final_score'] = int(resp_dict['api']['goalsAwayTeam'])
+    df.to_csv('api-stats.csv')
+
+
+def live_matches_producer(out_q, minute_threshold):
     n_api_call = 0
+    label_dict = get_label_dict()
+    n_api_call += 1
     while True:
         matches_list = get_basic_info()
         n_api_call += 1
         for match in matches_list:
+            if match['minute'] < minute_threshold:
+                continue
             resp = get_match_statistics(match['fixture_id'])
             n_api_call += 1
             stat_to_dict(resp, match)
+            resp = get_prematch_odds(match['fixture_id'], label_dict['Goals Over/Under'])
+            n_api_call += 1
+            prematch_odds_uo_to_dict(resp, match)
+            resp = get_prematch_odds(match['fixture_id'], label_dict['Match Winner'])
+            n_api_call += 1
+            prematch_odds_1x2_to_dict(resp, match)
             df = pd.DataFrame(data=match)
             out_q.put(df)
+            save(df)
         time.sleep(301)

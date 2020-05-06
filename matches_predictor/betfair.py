@@ -7,7 +7,6 @@ import time
 
 
 def login():
-    # Change this certs path to wherever you're storing your certificates
     file_path = os.path.dirname(os.path.abspath(__file__))
     certs_path = f"{file_path}/../certs"
 
@@ -23,9 +22,9 @@ def login():
     return trading
 
 
-def check_exposure(trading, max_exposure):
-    exposure = trading.account.get_account_funds().exposure
-    return exposure < max_exposure
+def check_exposure(trading, balance, max_exposure):
+    current_balance = trading.account.get_account_funds().available_to_bet_balance
+    return current_balance + max_exposure > balance
 
 
 def get_soccer_df(trading, in_play_only=True):
@@ -61,7 +60,6 @@ def get_event_id(soccer_df, prediction_obj):
 
 
 def get_market_id(trading, event_id, prediction_obj):
-    # list market catalogue -> from market name get Market id
     market_catalogue_filter = filters.market_filter(event_ids=[event_id])
 
     market_catalogues = trading.betting.list_market_catalogue(
@@ -84,7 +82,7 @@ def get_market_id(trading, event_id, prediction_obj):
     return market_id
 
 
-def process_runner_books(runner_books):
+def _process_runner_books(runner_books):
     '''
     This function processes the runner books and returns a DataFrame with the best back/lay prices + vol for each runner
     :param runner_books:
@@ -148,17 +146,30 @@ def get_runners_df(trading, market_id):
 
     # Grab the first market book from the returned list as we only requested one market 
     market_book = market_books[0]
-    runners_df = process_runner_books(market_book.runners)
+    runners_df = _process_runner_books(market_book.runners)
     return runners_df
 
 
-def bet_algo(bet_size, runners_df, prediction_obj):
-    selection_id = ''
+def bet_algo(bet_size, bets_dict, risk_level_high, risk_level_medium, runners_df, prediction_obj):
+    selection_idx = prediction_obj.prediction  # da modificare
+    selection_id = runners_df.loc[:, 'Selection ID'][selection_idx]
     odd = runners_df.loc[runners_df['Selection ID'] == selection_id, 'Best Back Price'][0]
     size_available = runners_df.loc[runners_df['Selection ID'] == selection_id, 'Best Back Size'][0]
-    execute_bet = True
-    size = 0
 
+    # see if there are still bets to do
+    if odd > risk_level_high and bets_dict['high'] == 0:
+        return False, 0, 0
+    if odd < risk_level_medium and bets_dict['low'] == 0:
+        return False, 0, 0
+    if odd <= risk_level_high and odd >= risk_level_medium and bets_dict['medium'] == 0:
+        return False, 0, 0
+
+    # see if the odd is worth it
+    if prediction_obj.probability < 1/odd:
+        return False, 0, 0
+
+    execute_bet = True
+    size = size_available if size_available < bet_size else bet_size
     return execute_bet, selection_id, odd, size
 
 
@@ -181,8 +192,8 @@ def place_order(trading, price, size, selection_id, market_id):
 
     # Place the order
     order = trading.betting.place_orders(
-        market_id=market_id, # The market id we obtained from before
-        instructions=[instructions_filter] # This must be a list
+        market_id=market_id,
+        instructions=[instructions_filter]
     )
 
     status = order.__dict__['_data']['instructionReports'][0]['status'] == 'SUCCESS'
@@ -190,15 +201,42 @@ def place_order(trading, price, size, selection_id, market_id):
     return status and sizeMatched
 
 
-def main(in_q, max_exposure, number_bets):
+def update_bets_dict(trading, bets_dict, odd, risk_level_high, risk_level_medium, balance, max_exposure):
+    if odd > risk_level_high:
+        bets_dict['high'] -= 1
+    if odd < risk_level_medium:
+        bets_dict['low'] -= 1
+    else:
+        bets_dict['medium'] -= 1
+    bets_remaining = bets_dict.values().reduce(sum)
+    current_balance = trading.account.get_account_funds().available_to_bet_balance
+    if bets_remaining == 0 and current_balance + max_exposure > balance:
+        bets_dict['high'] = 1
+        bets_dict['medium'] = 1
+        bets_dict['low'] = 1
+
+
+def restore_dict(trading, bets_dict, bets_dict_init, balance):
+    current_balance = trading.account.get_account_funds().available_to_bet_balance
+    if current_balance > balance:
+        return bets_dict_init
+    else:
+        return bets_dict
+
+
+def main(in_q, max_exposure, bets_dict_init, risk_level_high, risk_level_medium):
+    bets_dict = dict(bets_dict_init)
     trading = login()
+    balance = trading.account.get_account_funds().available_to_bet_balance
+    number_bets = bets_dict.values().reduce(sum)
     bet_size = max_exposure / number_bets
     while True:
-        if not check_exposure(trading, max_exposure):
+        if not check_exposure(trading, balance, max_exposure):
             with in_q.mutex:
                 in_q.queue.clear()
             time.sleep(120)
             continue
+        bets_dict = restore_dict(trading, bets_dict, bets_dict_init, balance)
         prediction_obj = in_q.get()
         soccer_df = get_soccer_df(trading, in_play_only=True)
         event_id = get_event_id(soccer_df, prediction_obj)
@@ -208,8 +246,10 @@ def main(in_q, max_exposure, number_bets):
         if market_id == 'ERR':
             continue
         runners_df = get_runners_df(trading, market_id)
-        execute_bet, selection_id, odd, size = bet_algo(bet_size, runners_df, prediction_obj)
+        execute_bet, selection_id, odd, size = bet_algo(bet_size, bets_dict,
+                                                        risk_level_high, risk_level_medium,
+                                                        runners_df, prediction_obj)
         if execute_bet:
             res = place_order(trading, odd, size, selection_id, market_id)
             if res:
-                print("bet placed")
+                update_bets_dict(trading, bets_dict, odd, risk_level_high, risk_level_medium, balance, max_exposure)

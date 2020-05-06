@@ -19,6 +19,10 @@ class Preprocessing():
                 df[col] = pd.to_numeric(df[col])
 
     @staticmethod
+    def drop_API_missing_cols(df, missing_cols):
+        df.drop(columns=missing_cols, inplace=True)
+
+    @staticmethod
     def one_hot_encoding(df, features_list):
         df_new = df.copy()
         for feature in features_list:
@@ -36,12 +40,10 @@ class Preprocessing():
         df['odd_under'] = (1 / df['odd_under']) + tmp
 
     @staticmethod
-    def pop_live_odds_data(df):
-        live_odds_input = df.loc[:, [
-            'id_partita', 'minute', 'live_odd_under', 'live_odd_over']].copy()
-        df.drop(columns=['live_odd_1', 'live_odd_2', 'live_odd_X',
-                         'live_odd_over', 'live_odd_under'], inplace=True)
-        return live_odds_input
+    def pop_live_odds_uo(df):
+        if 'live_odd_1' in df.columns:
+            df.drop(columns=['live_odd_1', 'live_odd_2', 'live_odd_X',
+                             'live_odd_over', 'live_odd_under'], inplace=True)
 
     @staticmethod
     def add_input_cols(df):

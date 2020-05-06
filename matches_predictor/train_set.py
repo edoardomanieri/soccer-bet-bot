@@ -144,8 +144,9 @@ class Preprocessing(base.Preprocessing):
 
     ########################### main function #############
     @staticmethod
-    def execute(train_df, cat_col, prod=True):
+    def execute(train_df, cat_col, missing_cols, prod=True):
         Preprocessing.to_numeric(train_df, cat_col)
+        Preprocessing.drop_API_missing_cols(train_df, missing_cols)
         Preprocessing.drop_odds_cols(train_df)
         Preprocessing.drop_nan(train_df)
         Preprocessing.impute_nan(train_df)
