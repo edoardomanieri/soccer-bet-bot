@@ -20,7 +20,8 @@ class Preprocessing():
 
     @staticmethod
     def drop_API_missing_cols(df, missing_cols):
-        df.drop(columns=missing_cols, inplace=True)
+        if missing_cols[0] in df.columns:
+            df.drop(columns=missing_cols, inplace=True)
 
     @staticmethod
     def one_hot_encoding(df, features_list):

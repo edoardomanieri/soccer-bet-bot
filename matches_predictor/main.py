@@ -21,5 +21,5 @@ if __name__ == "__main__":
         res_path='../res/csv', cat_col=cat_col)
 
     best_acc, best_params = validation.randomizedsearch_CV(
-        df, clf, cat_col, api_missing_cols, outcome_cols, params, cv=5, trials=5, threshold=0.7)
-    print(best_acc)
+        df, clf, cat_col, api_missing_cols, outcome_cols, params, cv=5, trials=1, threshold=0.7)
+    print(f"Best threshold accuracy: {best_acc}")

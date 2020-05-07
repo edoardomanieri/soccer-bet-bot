@@ -4,6 +4,8 @@ import pandas as pd
 import glob
 import os
 import joblib
+import shap
+import matplotlib.pyplot as plt
 
 
 '''date', 'id_partita', 'minute', 'home', 'away', 'campionato',
@@ -169,6 +171,18 @@ class Modeling(base.Modeling):
         train_X = train_df.drop(columns=to_drop)
         clf.fit(train_X, train_y)
         file_path = os.path.dirname(os.path.abspath(__file__))
+        # interpretations
+        if not os.path.exists(f"{file_path}/../res/summary_plot_shap.png"):
+            explainer = shap.TreeExplainer(clf)
+            shap_values = explainer.shap_values(train_X.values)
+            shap.summary_plot(shap_values, train_X, show=False)
+            plt.tight_layout()
+            plt.savefig(f"{file_path}/../res/summary_plot_shap.png")
+            plt.show()
+            shap.summary_plot(shap_values, train_X, plot_type="bar", show=False)
+            plt.tight_layout()
+            plt.savefig(f"{file_path}/../res/summary_plot_shap_bar.png")
+            plt.show()
         prod_path = "production" if prod else "development"
         path = f"{file_path}/../res/models/{prod_path}/goals.joblib"
         joblib.dump(clf, path)

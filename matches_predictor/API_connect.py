@@ -3,6 +3,8 @@ import json
 import pandas as pd
 import numpy as np
 import time
+import glob
+import os
 
 '''date', 'id_partita', 'minute', 'home', 'away', 'campionato',
        'home_score', 'away_score', 'home_possesso_palla',
@@ -155,29 +157,34 @@ def stat_to_dict(response, match_dict):
     match_dict['away_passaggi_completati'] = int(resp_dict['api']['statistics']['Passes accurate']['away'])
 
 
+# save match on df for future training
 def save(df):
+    file_path = os.path.dirname(os.path.abspath(__file__))
     fixture_id = df.loc[:, 'fixture_id'][0]
-    with open("./fixture_ids", "r") as f:
+    with open(f"{file_path}/../res/fixture_ids", "r") as f:
         fixture_ids = [line.replace("\n", "").strip() for line in f.readlines()]
     if fixture_id not in fixture_ids:
-        with open("./fixture_ids", "a") as f:
+        with open(f"{file_path}/../res/fixture_ids", "a") as f:
             f.write(f"{fixture_id}\n")
-    df_before = pd.read_csv('api-stats.csv', index_col=0)
+    df_before = pd.read_csv(f'{file_path}/../res/temp.csv', index_col=0)
     df['home_final_score'] = np.nan
     df['away_final_score'] = np.nan
     df_new = pd.concat([df_before, df])
-    df_new.to_csv('api-stats.csv')
+    df_new.to_csv(f'{file_path}/../res/temp.csv')
 
 
 def ended_matches():
-    df = pd.read_csv('api-stats.csv', index_col=0)
-    with open("./fixture_ids", "r") as f:
+    file_path = os.path.dirname(os.path.abspath(__file__))
+    df = pd.read_csv(f'{file_path}/../res/temp.csv', index_col=0)
+    with open(f"{file_path}/../res/fixture_ids", "r") as f:
         fixture_ids = [line.replace("\n", "").strip() for line in f.readlines()]
     keys = json.load(open("../keys.js"))
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
         'x-rapidapi-key': keys['x-rapidapi-key']
         }
+    # fixture id of finished matches
+    finished = []
     for fixture_id in fixture_ids:
         url = f"https://api-football-v1.p.rapidapi.com/v2/fixtures/id/{fixture_id}"
         response = requests.request("GET", url, headers=headers)
@@ -186,7 +193,20 @@ def ended_matches():
         if status == 'Match Finished':
             df.loc[df['fixture_id'] == fixture_id, 'home_final_score'] = int(resp_dict['api']['goalsHomeTeam'])
             df.loc[df['fixture_id'] == fixture_id, 'away_final_score'] = int(resp_dict['api']['goalsAwayTeam'])
-    df.to_csv('api-stats.csv')
+            # remove fixture id from list
+            finished.append(fixture_id)
+    # write not finished matches on the fixture id file and temp file
+    not_finished = [f for f in fixture_id if f not in fixture_ids]
+    with open(f"{file_path}/../res/fixture_ids", "w") as f:
+        for f_id in not_finished:
+            f.write(f"{f_id}\n")
+    df_temp_remaining = df.loc[df['fixture_id'].isin(not_finished), :]
+    df_temp_remaining.to_csv(f'{file_path}/../res/temp.csv')
+    # save file in res folder with stats number
+    all_files = sorted(glob.glob(f"{file_path}/../res/*.csv"),
+                       key=lambda x: int(x[x.index('stats') + 5:-4]))
+    num = int(all_files[-1][all_files[-1].index('stats') + 5:-4]) + 1
+    df.to_csv(f"{file_path}/../res/stats{num}.csv")
 
 
 def live_matches_producer(out_q, minute_threshold):

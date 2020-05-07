@@ -89,12 +89,14 @@ def _show_df(input_df):
 def full_CV_pipeline(df, clf, cat_col, missing_cols, outcome_cols, cv=5, threshold=0.5):
     id_partita_test, total_mask = _get_ids_for_test(df, False, False)
     cv_lists = _partition(id_partita_test, cv)
-    mae_folds = []
+    accs_thresh, accs_05 = [], []
     for sublist in cv_lists:
         df_temp = df.copy()
-        # drop all the matches that doesn't satisfy the condition
+
+        # drop all the matches that doesn't satisfy the conditions
         dropping_mask = df_temp['id_partita'].isin(sublist) & ~total_mask
         df_temp = df_temp.drop(df_temp[dropping_mask].index)
+
         train_df, test_df = _split_test_train(df_temp, sublist)
         train_set.Preprocessing.execute(train_df, cat_col, missing_cols, prod=False)
         test_y, test_prematch_odds, test_live_odds = test_set.Preprocessing.execute(
@@ -110,11 +112,14 @@ def full_CV_pipeline(df, clf, cat_col, missing_cols, outcome_cols, cv=5, thresho
             test_y, on=['id_partita', 'minute'])
         predictions_df = predictions_df.merge(
             test_live_odds, on=['minute', 'id_partita'])
-        print(_show_df(predictions_df).head(5))
-        accuracy = _get_accuracy(predictions_df, threshold)
-        mae_folds.append(accuracy)
-        avg_accuracy = sum(mae_folds)/cv
-    return mae_folds, avg_accuracy
+        # print(_show_df(predictions_df).head(5))
+        accuracy_thresh = _get_accuracy(predictions_df, threshold)
+        accuracy_05 = _get_accuracy(predictions_df)
+        accs_thresh.append(accuracy_thresh)
+        accs_05.append(accuracy_05)
+    avg_accs_thresh = sum(accs_thresh)/cv
+    avg_accs_05 = sum(accs_05)/cv
+    return avg_accs_thresh, avg_accs_05
 
 
 def randomizedsearch_CV(df, estimator, cat_col, missing_cols, outcome_cols, param_dist, cv=5, threshold=0.5, trials=20):
@@ -130,12 +135,13 @@ def randomizedsearch_CV(df, estimator, cat_col, missing_cols, outcome_cols, para
         param_dict_list.remove(param_dict)
         estimator.set_params(**param_dict)
         selected_estimator = clone(estimator)
-        _, res = full_CV_pipeline(
+        avg_accs_thresh, avg_accs_05 = full_CV_pipeline(
             df, selected_estimator, cat_col, missing_cols, outcome_cols, cv=cv, threshold=threshold)
         print(param_dict)
-        print(res)
-        if res > m:
-            m = res
+        print(f"Accuracy with threshold: {avg_accs_thresh}")
+        print(f"Accuracy general: {avg_accs_05}")
+        if avg_accs_thresh > m:
+            m = avg_accs_thresh
             best_params = param_dict
             best_estimator = clone(selected_estimator)
     train_set.Modeling.save_model(best_estimator)

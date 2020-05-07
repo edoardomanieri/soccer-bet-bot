@@ -7,7 +7,7 @@ from matches_predictor.betfair import main
 
 
 if __name__ == "__main__":
-    # Create the shared queue and launch both threads 
+    # Create the shared queue and launch both threads
     q1 = Queue()
     q2 = Queue()
     # params
@@ -28,6 +28,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print('\n! Received keyboard interrupt, quitting threads.\n')
 
-    # Wait for all produced items to be consumed
-    # q1.join()
-    # q2.join()

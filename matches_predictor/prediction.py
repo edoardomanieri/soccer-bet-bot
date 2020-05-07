@@ -88,12 +88,14 @@ def predictions_consumer(in_q, out_q, prob_threshold):
     train_df = train_set.Retrieving.starting_df(res_path)
     train_set.Preprocessing.execute(train_df, cat_col, api_missing_cols)
     train_df = pd.read_csv(f"{file_path}/../res/dataframes/training_goals.csv", header=0, index_col=0)
+    # get clf from cross validation (dev) and retrain on all the train set
     clf = train_set.Modeling.get_dev_model()
     train_set.Modeling.train_model(train_df, clf, cat_col, outcome_cols, prod=True)
     clf = train_set.Modeling.get_prod_model()
 
     while True:
         input_df = in_q.get()
+        # drop fixture id col
         input_df.drop(columns=['fixture_id'], inplace=True)
         input_prematch_odds = input_stream.Preprocessing.execute(
             input_df, train_df, cat_col)
