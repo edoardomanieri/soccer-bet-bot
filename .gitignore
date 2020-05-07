@@ -6,6 +6,10 @@ matches_predictor/result_utils.py
 matches_predictor/result.py
 keys.js
 certs/
+res/summary_plot_shap.png
+res/summary_plot_shap_bar.png
+res/temp.csv
+res/fixture_ids
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
