@@ -3,7 +3,6 @@ import json
 import pandas as pd
 import numpy as np
 import time
-import glob
 import os
 
 '''date', 'id_partita', 'minute', 'home', 'away', 'campionato',
@@ -54,7 +53,7 @@ def get_basic_info():
         'x-rapidapi-key': keys['x-rapidapi-key']
         }
     response = requests.request("GET", url, headers=headers)
-    list_of_matches = basic_info_to_dict(response)
+    list_of_matches = basic_info_to_dict(response.content)
     return list_of_matches
 
 
@@ -77,7 +76,6 @@ def basic_info_to_dict(response):
 
 
 def get_label_dict():
-    label_dict = {}
     keys = json.load(open("../keys.js"))
     url = f"https://api-football-v1.p.rapidapi.com/v2/odds/labels/"
     headers = {
@@ -85,8 +83,9 @@ def get_label_dict():
         'x-rapidapi-key': keys['x-rapidapi-key']
         }
     response = requests.request("GET", url, headers=headers)
-    resp_dict = json.loads(response)
+    resp_dict = json.loads(response.content)
     labels = resp_dict['api']['labels']
+    label_dict = {}
     for label in labels:
         label_dict[label['label']] = label['id']
     return label_dict
@@ -100,20 +99,44 @@ def get_prematch_odds(fixture_id, label_id):
         'x-rapidapi-key': keys['x-rapidapi-key']
         }
     response = requests.request("GET", url, headers=headers)
-    return response
+    return response.content
 
 
 def prematch_odds_uo_to_dict(response, match_dict):
     resp_dict = json.loads(response)
-    match_dict['odd_under'] = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values'][0]['odd']
-    match_dict['odd_over'] = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values'][1]['odd']
+    bets = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values']
+    for bet in bets:
+        if bet['value'] == 'Over 2.5':
+            match_dict['odd_over'] = float(bet['odd'])
+        if bet['value'] == 'Under 2.5':
+            match_dict['odd_under'] = float(bet['odd'])
+    if 'odd_over' not in match_dict.keys():
+        print("Over 2.5 odd not found \n")
+        match_dict['odd_over'] = np.nan
+    if 'odd_under' not in match_dict.keys():
+        print("Under 2.5 odd not found \n")
+        match_dict['odd_under'] = np.nan
 
 
 def prematch_odds_1x2_to_dict(response, match_dict):
     resp_dict = json.loads(response)
-    match_dict['odd_1'] = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values'][0]['odd']
-    match_dict['odd_X'] = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values'][1]['odd']
-    match_dict['odd_2'] = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values'][3]['odd']
+    bets = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values']
+    for bet in bets:
+        if bet['value'] == 'Home':
+            match_dict['odd_1'] = float(bet['odd'])
+        if bet['value'] == 'Draw':
+            match_dict['odd_X'] = float(bet['odd'])
+        if bet['value'] == 'Away':
+            match_dict['odd_2'] = float(bet['odd'])
+    if 'odd_1' not in match_dict.keys():
+        print("1 odd not found \n")
+        match_dict['odd_1'] = np.nan
+    if 'odd_X' not in match_dict.keys():
+        print("X odd not found \n")
+        match_dict['odd_X'] = np.nan
+    if 'odd_2' not in match_dict.keys():
+        print("2 odd not found \n")
+        match_dict['odd_2'] = np.nan
 
 
 def get_match_statistics(fixture_id):
@@ -124,7 +147,7 @@ def get_match_statistics(fixture_id):
         'x-rapidapi-key': keys['x-rapidapi-key']
         }
     response = requests.request("GET", url, headers=headers)
-    return response
+    return response.content
 
 
 def stat_to_dict(response, match_dict):
@@ -202,11 +225,11 @@ def ended_matches():
             f.write(f"{f_id}\n")
     df_temp_remaining = df.loc[df['fixture_id'].isin(not_finished), :]
     df_temp_remaining.to_csv(f'{file_path}/../res/temp.csv')
-    # save file in res folder with stats number
-    all_files = sorted(glob.glob(f"{file_path}/../res/*.csv"),
-                       key=lambda x: int(x[x.index('stats') + 5:-4]))
-    num = int(all_files[-1][all_files[-1].index('stats') + 5:-4]) + 1
-    df.to_csv(f"{file_path}/../res/stats{num}.csv")
+    # save file in res folder total df file
+    df_to_save = df.loc[~df['fixture_id'].isin(not_finished), :]
+    df_before = pd.read_csv(f"{file_path}/../res/df_api.csv", index_col=0)
+    df = pd.concat([df_before, df_to_save], axis=0, ignore_index=True)
+    df.to_csv(f"{file_path}/../res/df_api.csv")
 
 
 def live_matches_producer(out_q, minute_threshold):
@@ -220,13 +243,11 @@ def live_matches_producer(out_q, minute_threshold):
             if match['minute'] < minute_threshold:
                 continue
             resp = get_match_statistics(match['fixture_id'])
-            n_api_call += 1
             stat_to_dict(resp, match)
             resp = get_prematch_odds(match['fixture_id'], label_dict['Goals Over/Under'])
-            n_api_call += 1
             prematch_odds_uo_to_dict(resp, match)
             resp = get_prematch_odds(match['fixture_id'], label_dict['Match Winner'])
-            n_api_call += 1
+            n_api_call += 3
             prematch_odds_1x2_to_dict(resp, match)
             df = pd.DataFrame(data=match)
             out_q.put(df)

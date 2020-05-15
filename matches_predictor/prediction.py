@@ -46,20 +46,23 @@ def get_predict_proba(clf, test_X, df):
     df['probability_over'] = probabilities[:, 1]
 
 
-def get_live_predictions(reprocess=False, retrain=False, res_path="../res/csv"):
+def get_live_predictions(reprocess=False, retrain=False):
 
     file_path = os.path.dirname(os.path.abspath(__file__))
     cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
     outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
+    api_missing_cols = ['home_punizioni', 'away_punizioni', 'home_rimesse_laterali', 'away_rimesse_laterali',
+                        'home_contrasti', 'away_contrasti', 'home_attacchi', 'away_attacchi',
+                        'home_attacchi_pericolosi', 'away_attacchi_pericolosi']
 
     if reprocess:
-        train_df = train_set.Retrieving.starting_df(res_path)
-        train_set.Preprocessing.execute(train_df, cat_col)
+        train_df = train_set.Retrieving.starting_df(api_missing_cols, cat_col)
+        train_set.Preprocessing.execute(train_df, cat_col, api_missing_cols)
 
     train_df = pd.read_csv(
         f"{file_path}/../res/dataframes/training_goals.csv", header=0, index_col=0)
 
-    input_df = input_stream.Retrieving.starting_df(res_path)
+    input_df = input_stream.Retrieving.starting_df(cat_cols, api_missing_cols)
     input_prematch_odds = input_stream.Preprocessing.execute(
         input_df, train_df, cat_col)
 
@@ -78,19 +81,18 @@ def get_live_predictions(reprocess=False, retrain=False, res_path="../res/csv"):
 
 
 def predictions_consumer(in_q, out_q, prob_threshold):
-    res_path = "../res/csv"
     file_path = os.path.dirname(os.path.abspath(__file__))
-    cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
+    cat_cols = ['home', 'away', 'campionato', 'date', 'id_partita']
     outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
     api_missing_cols = ['home_punizioni', 'away_punizioni', 'home_rimesse_laterali', 'away_rimesse_laterali',
                         'home_contrasti', 'away_contrasti', 'home_attacchi', 'away_attacchi',
                         'home_attacchi_pericolosi', 'away_attacchi_pericolosi']
-    train_df = train_set.Retrieving.starting_df(res_path)
-    train_set.Preprocessing.execute(train_df, cat_col, api_missing_cols)
+    train_df = train_set.Retrieving.starting_df(cat_cols, api_missing_cols)
+    train_set.Preprocessing.execute(train_df, cat_cols, api_missing_cols)
     train_df = pd.read_csv(f"{file_path}/../res/dataframes/training_goals.csv", header=0, index_col=0)
     # get clf from cross validation (dev) and retrain on all the train set
     clf = train_set.Modeling.get_dev_model()
-    train_set.Modeling.train_model(train_df, clf, cat_col, outcome_cols, prod=True)
+    train_set.Modeling.train_model(train_df, clf, cat_cols, outcome_cols, prod=True)
     clf = train_set.Modeling.get_prod_model()
 
     while True:
@@ -98,8 +100,8 @@ def predictions_consumer(in_q, out_q, prob_threshold):
         # drop fixture id col
         input_df.drop(columns=['fixture_id'], inplace=True)
         input_prematch_odds = input_stream.Preprocessing.execute(
-            input_df, train_df, cat_col)
-        test_X = input_df.drop(columns=cat_col)
+            input_df, train_df, cat_cols)
+        test_X = input_df.drop(columns=cat_cols)
         get_predict_proba(clf, test_X, input_df)
         predictions_df = prematch_odds_based(input_df, input_prematch_odds)
         minute = predictions_df.loc[:, 'minute'][0]

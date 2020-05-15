@@ -1,5 +1,5 @@
 import numpy as np
-from matches_predictor import base
+from matches_predictor.model import base
 import pandas as pd
 import glob
 import os
@@ -27,14 +27,16 @@ import os
 class Retrieving(base.Retrieving):
 
     @staticmethod
-    def starting_df(res_path):
+    def starting_df(cat_cols, api_missing_cols):
         file_path = os.path.dirname(os.path.abspath(__file__))
-        all_files = sorted(glob.glob(f"{file_path}/{res_path}/*.csv"),
-                           key=lambda x: int(x[x.index('stats') + 5:-4]))
-        input_df = pd.read_csv(all_files[-1], index_col=None, header=0)
-        if 'Unnamed: 0' in input_df.columns:
-            input_df.drop(columns=['Unnamed: 0'], inplace=True)
-        return input_df.sort_values(by=['id_partita', 'minute'], ascending=[True, False])
+        # import dataset
+        df_temp = pd.read_csv(f"{file_path}/../res/temp.csv", index_col=0, header=0)
+        # change data type
+        for col in df_temp.columns:
+            if col not in cat_cols:
+                df_temp[col] = pd.to_numeric(df_temp[col])
+        return df_temp.reset_index(drop=True)
+
 
 
 class Preprocessing(base.Preprocessing):
@@ -154,7 +156,7 @@ class Preprocessing(base.Preprocessing):
         Preprocessing.impute_nan(train_df, input_df)
         Preprocessing.normalize_prematch_odds(input_df)
         input_prematch_odds = Preprocessing.pop_prematch_odds_data(input_df)
-        input_live_odds = Preprocessing.pop_live_odds_data(input_df)
+        input_live_odds = Preprocessing.pop_live_odds_uo(input_df)
         Preprocessing.drop_outcome_cols(input_df)
         Preprocessing.add_prematch_vars(train_df, input_df)
         Preprocessing.add_input_cols(input_df)

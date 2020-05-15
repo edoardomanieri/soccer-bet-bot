@@ -1,7 +1,7 @@
 from queue import Queue
 from threading import Thread
 import signal
-from matches_predictor.API_connect import live_matches_producer
+from matches_predictor.API_connect import live_matches_producer, ended_matches
 from matches_predictor.prediction import predictions_consumer
 from matches_predictor.betfair import main
 
@@ -27,4 +27,5 @@ if __name__ == "__main__":
         signal.pause()
     except KeyboardInterrupt:
         print('\n! Received keyboard interrupt, quitting threads.\n')
+        ended_matches()
 

@@ -1,25 +1,24 @@
 import numpy as np
-from matches_predictor import base
+from matches_predictor.model import base
 import pandas as pd
-import glob
 import os
 
 
 class Retrieving(base.Retrieving):
 
     @staticmethod
-    def starting_df(res_path, cat_col):
+    def starting_df(cat_cols, api_missing_cols):
         file_path = os.path.dirname(os.path.abspath(__file__))
-        all_files = sorted(glob.glob(f"{file_path}/{res_path}/*.csv"),
-                           key=lambda x: int(x[x.index('stats') + 5:-4]))
-        li = [pd.read_csv(filename, index_col=None, header=0)
-              for filename in all_files]
-        df = pd.concat(li, axis=0, ignore_index=True)
-        if 'Unnamed: 0' in df.columns:
-            df.drop(columns=['Unnamed: 0'], inplace=True)
+        # import dataset
+        df_API = pd.read_csv(f"{file_path}/../res/df_api.csv", index_col=0, header=0)
+        # put on the API df all nans (will be dropped later on)
+        for col in api_missing_cols:
+            df_API[col] = np.nan
+        df_scraping = pd.read_csv(f"{file_path}/../res/df_scraping.csv", index_col=0, header=0)
+        df = pd.concat([df_API, df_scraping], axis=0, ignore_index=True)
         # change data type
         for col in df.columns:
-            if col not in cat_col:
+            if col not in cat_cols:
                 df[col] = pd.to_numeric(df[col])
         return df.reset_index(drop=True)
 

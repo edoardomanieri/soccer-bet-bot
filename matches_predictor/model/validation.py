@@ -1,20 +1,14 @@
 from sklearn.metrics import accuracy_score
-from matches_predictor import test_set, train_set, prediction
+from matches_predictor.model import test_set, train_set
+from matches_predictor import prediction
 import random
 import itertools
 from sklearn.base import clone
 
 
-def _test_mask(df):
-    minute_mask = (df['minute'] < 70) & (df['minute'] > 30)
-    goal_mask = (df['home_score'] + df['away_score']) == 1
-    total_mask = minute_mask & goal_mask
-    return total_mask
-
-
-def _get_ids_for_test(df, prematch_odds=True, live_odds=True):
+def _get_ids_for_test(df, test_mask_method, prematch_odds=True, live_odds=True):
     # splittare test and train in modo che nel train ci siano alcune partite, nel test altre
-    mask = _test_mask(df)
+    mask = test_mask_method(df)
     total_odds_mask = [True] * len(df)  # ?
     if prematch_odds and live_odds:
         total_odds_mask = (df['live_odd_1'] != 0) & (df['odd_1'] != 0)
@@ -86,8 +80,8 @@ def _show_df(input_df):
     return final_df
 
 
-def full_CV_pipeline(df, clf, cat_col, missing_cols, outcome_cols, cv=5, threshold=0.5):
-    id_partita_test, total_mask = _get_ids_for_test(df, False, False)
+def full_CV_pipeline(df, test_mask_method, clf, cat_col, missing_cols, outcome_cols, cv=5, threshold=0.5):
+    id_partita_test, total_mask = _get_ids_for_test(df, test_mask_method, False, False)
     cv_lists = _partition(id_partita_test, cv)
     accs_thresh, accs_05 = [], []
     for sublist in cv_lists:
@@ -122,7 +116,7 @@ def full_CV_pipeline(df, clf, cat_col, missing_cols, outcome_cols, cv=5, thresho
     return avg_accs_thresh, avg_accs_05
 
 
-def randomizedsearch_CV(df, estimator, cat_col, missing_cols, outcome_cols, param_dist, cv=5, threshold=0.5, trials=20):
+def randomizedsearch_CV(df, test_mask_method, estimator, cat_col, missing_cols, outcome_cols, param_dist, cv=5, threshold=0.5, trials=20):
     m = 0
     best_params = {}
     param_dict_list = []
@@ -136,7 +130,7 @@ def randomizedsearch_CV(df, estimator, cat_col, missing_cols, outcome_cols, para
         estimator.set_params(**param_dict)
         selected_estimator = clone(estimator)
         avg_accs_thresh, avg_accs_05 = full_CV_pipeline(
-            df, selected_estimator, cat_col, missing_cols, outcome_cols, cv=cv, threshold=threshold)
+            df, test_mask_method, selected_estimator, cat_col, missing_cols, outcome_cols, cv=cv, threshold=threshold)
         print(param_dict)
         print(f"Accuracy with threshold: {avg_accs_thresh}")
         print(f"Accuracy general: {avg_accs_05}")

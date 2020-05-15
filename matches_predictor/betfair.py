@@ -156,7 +156,7 @@ def bet_algo(bet_size, bets_dict, risk_level_high, risk_level_medium, runners_df
     odd = runners_df.loc[runners_df['Selection ID'] == selection_id, 'Best Back Price'][0]
     size_available = runners_df.loc[runners_df['Selection ID'] == selection_id, 'Best Back Size'][0]
 
-    # see if there are still bets to do
+    # see if there are still bets available for today (budget based)
     if odd > risk_level_high and bets_dict['high'] == 0:
         return False, 0, 0
     if odd < risk_level_medium and bets_dict['low'] == 0:
@@ -201,6 +201,7 @@ def place_order(trading, price, size, selection_id, market_id):
     return status and sizeMatched
 
 
+# Decrease the number of bets remaining
 def update_bets_dict(trading, bets_dict, odd, risk_level_high, risk_level_medium, balance, max_exposure):
     if odd > risk_level_high:
         bets_dict['high'] -= 1
@@ -232,6 +233,7 @@ def main(in_q, max_exposure, bets_dict_init, risk_level_high, risk_level_medium)
     bet_size = max_exposure / number_bets
     while True:
         if not check_exposure(trading, balance, max_exposure):
+            # Empty the queue
             with in_q.mutex:
                 in_q.queue.clear()
             time.sleep(120)
