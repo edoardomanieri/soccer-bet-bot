@@ -120,7 +120,6 @@ class Preprocessing(base.Preprocessing):
             else:
                 df.loc[df['campionato'] == camp, 'avg_camp_goals'] = df.loc[df['campionato']
                                                                             == camp, :].reset_index()['avg_camp_goals'][0]
-
         df['home_avg_goal_fatti'] = 0
         df['away_avg_goal_fatti'] = 0
         df['home_avg_goal_subiti'] = 0

@@ -112,16 +112,14 @@ class Preprocessing(base.Preprocessing):
             test_df.loc[test_df['odd_2'] == 0, 'odd_2'] = 3
 
         # imputing the other nans
-        nan_cols = [i for i in test_df.columns if test_df[i].isnull(
-        ).any() if i not in ['home_final_score', 'away_final_score']]
+        nan_cols = [i for i in test_df.columns if test_df[i].isnull().any() if i not in ['home_final_score', 'away_final_score']]
         for col in nan_cols:
             col_df = train_df[(~train_df['home_' + col[5:]].isnull())
                               & (~train_df['away_' + col[5:]].isnull())]
             if 'away' in col:
                 continue
             col = col[5:]
-            nan_mask = test_df['home_' +
-                               col].isnull() | test_df['away_' + col].isnull()
+            nan_mask = test_df['home_' + col].isnull() | test_df['away_' + col].isnull()
             if "possesso_palla" in col:
                 test_df.loc[nan_mask, 'home_possesso_palla'] = 50
                 test_df.loc[nan_mask, 'away_possesso_palla'] = 50
@@ -148,7 +146,7 @@ class Preprocessing(base.Preprocessing):
         Preprocessing.add_outcome_col(test_df)
         Preprocessing.drop_API_missing_cols(test_df, missing_cols)
         Preprocessing.impute_nan(train_df, test_df)
-        Preprocessing.normalize_prematch_odds(test_df)
+        Preprocessing.prematch_odds_to_prob(test_df)
         test_prematch_odds = Preprocessing.pop_prematch_odds_data(test_df)
         test_live_odds = Preprocessing.pop_live_odds_data(test_df)
         Preprocessing.add_prematch_vars(train_df, test_df)

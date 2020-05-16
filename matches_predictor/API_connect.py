@@ -46,7 +46,8 @@ def extract_values(obj, key):
 
 
 def get_basic_info():
-    keys = json.load(open("../keys.js"))
+    file_path = os.path.dirname(os.path.abspath(__file__))
+    keys = json.load(open(f"{file_path}/../keys.js"))
     url = "https://api-football-v1.p.rapidapi.com/v2/fixtures/live"
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
@@ -63,20 +64,21 @@ def basic_info_to_dict(response):
     for resp in resp_dict['api']['fixtures']:
         out_dict = {}
         out_dict['fixture_id'] = resp['fixture_id']
-        out_dict['campionato'] = resp['league']['name']
+        out_dict['campionato'] = resp['league']['name'].lower()
         out_dict['date'] = resp['event_date']
         out_dict['minute'] = resp['elapsed']
-        out_dict['home'] = resp['homeTeam']['team_name']
-        out_dict['away'] = resp['awayTeam']['team_name']
-        out_dict['home_score'] = resp['goalsHomeTeam']
-        out_dict['away_score'] = resp['goalsAwayTeam']
+        out_dict['home'] = resp['homeTeam']['team_name'].lower()
+        out_dict['away'] = resp['awayTeam']['team_name'].lower()
+        out_dict['home_score'] = int(resp['goalsHomeTeam'])
+        out_dict['away_score'] = int(resp['goalsAwayTeam'])
         out_dict['id_partita'] = f"{resp['event_date']}-{resp['fixture_id']}"
         res.append(out_dict)
     return res
 
 
 def get_label_dict():
-    keys = json.load(open("../keys.js"))
+    file_path = os.path.dirname(os.path.abspath(__file__))
+    keys = json.load(open(f"{file_path}/../keys.js"))
     url = f"https://api-football-v1.p.rapidapi.com/v2/odds/labels/"
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
@@ -92,7 +94,8 @@ def get_label_dict():
 
 
 def get_prematch_odds(fixture_id, label_id):
-    keys = json.load(open("../keys.js"))
+    file_path = os.path.dirname(os.path.abspath(__file__))
+    keys = json.load(open(f"{file_path}/../keys.js"))
     url = f"https://api-football-v1.p.rapidapi.com/v2/odds/fixture/{fixture_id}/label/{label_id}"
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
@@ -104,12 +107,13 @@ def get_prematch_odds(fixture_id, label_id):
 
 def prematch_odds_uo_to_dict(response, match_dict):
     resp_dict = json.loads(response)
-    bets = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values']
-    for bet in bets:
-        if bet['value'] == 'Over 2.5':
-            match_dict['odd_over'] = float(bet['odd'])
-        if bet['value'] == 'Under 2.5':
-            match_dict['odd_under'] = float(bet['odd'])
+    if 'api' in resp_dict.keys():
+        bets = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values']
+        for bet in bets:
+            if bet['value'] == 'Over 2.5':
+                match_dict['odd_over'] = float(bet['odd'])
+            if bet['value'] == 'Under 2.5':
+                match_dict['odd_under'] = float(bet['odd'])
     if 'odd_over' not in match_dict.keys():
         print("Over 2.5 odd not found \n")
         match_dict['odd_over'] = np.nan
@@ -120,14 +124,15 @@ def prematch_odds_uo_to_dict(response, match_dict):
 
 def prematch_odds_1x2_to_dict(response, match_dict):
     resp_dict = json.loads(response)
-    bets = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values']
-    for bet in bets:
-        if bet['value'] == 'Home':
-            match_dict['odd_1'] = float(bet['odd'])
-        if bet['value'] == 'Draw':
-            match_dict['odd_X'] = float(bet['odd'])
-        if bet['value'] == 'Away':
-            match_dict['odd_2'] = float(bet['odd'])
+    if 'api' in resp_dict.keys():
+        bets = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values']
+        for bet in bets:
+            if bet['value'] == 'Home':
+                match_dict['odd_1'] = float(bet['odd'])
+            if bet['value'] == 'Draw':
+                match_dict['odd_X'] = float(bet['odd'])
+            if bet['value'] == 'Away':
+                match_dict['odd_2'] = float(bet['odd'])
     if 'odd_1' not in match_dict.keys():
         print("1 odd not found \n")
         match_dict['odd_1'] = np.nan
@@ -140,7 +145,8 @@ def prematch_odds_1x2_to_dict(response, match_dict):
 
 
 def get_match_statistics(fixture_id):
-    keys = json.load(open("../keys.js"))
+    file_path = os.path.dirname(os.path.abspath(__file__))
+    keys = json.load(open(f"{file_path}/../keys.js"))
     url = f"https://api-football-v1.p.rapidapi.com/v2/statistics/fixture/{fixture_id}"
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
@@ -152,9 +158,19 @@ def get_match_statistics(fixture_id):
 
 def stat_to_dict(response, match_dict):
     resp_dict = json.loads(response)
+    if 'api' in resp_dict.keys():
+        return False
     stats = resp_dict['api']['statistics']
     if len(stats) == 0:
         return False
+    value = stats['Ball Possession']['home'].replace("%", "")
+    match_dict['home_possesso_palla'] = 50 if value is None else int(value)
+    value = stats['Ball Possession']['away'].replace("%", "")
+    match_dict['away_possesso_palla'] = 50 if value is None else int(value)
+    value = stats['Total Shots']['home']
+    match_dict['home_tiri'] = 0 if value is None else int(value)
+    value = stats['Total Shots']['away']
+    match_dict['away_tiri'] = 0 if value is None else int(value)
     value = stats['Shots on Goal']['home']
     match_dict['home_tiri_in_porta'] = 0 if value is None else int(value)
     value = stats['Shots on Goal']['away']
@@ -163,44 +179,34 @@ def stat_to_dict(response, match_dict):
     match_dict['home_tiri_fuori'] = 0 if value is None else int(value)
     value = stats['Shots off Goal']['away']
     match_dict['away_tiri_fuori'] = 0 if value is None else int(value)
-    value = stats['Total Shots']['home']
-    match_dict['home_tiri'] = 0 if value is None else int(value)
-    value = stats['Total Shots']['away']
-    match_dict['away_tiri'] = 0 if value is None else int(value)
     value = stats['Blocked Shots']['home']
     match_dict['home_tiri_fermati'] = 0 if value is None else int(value)
     value = stats['Blocked Shots']['away']
     match_dict['away_tiri_fermati'] = 0 if value is None else int(value)
-    value = stats['Fouls']['home']
-    match_dict['home_falli'] = 0 if value is None else int(value)
-    value = stats['Fouls']['away']
-    match_dict['away_falli'] = 0 if value is None else int(value)
     value = stats['Corner Kicks']['home']
-    match_dict['home_calci_d_angoli'] = 0 if value is None else int(value)
+    match_dict['home_calci_d_angolo'] = 0 if value is None else int(value)
     value = stats['Corner Kicks']['away']
-    match_dict['away_calci_d_angoli'] = 0 if value is None else int(value)
-    value = stats['Corner Kicks']['home']
-    match_dict['home_calci_d_angoli'] = 0 if value is None else int(value)
+    match_dict['away_calci_d_angolo'] = 0 if value is None else int(value)
     value = stats['Offsides']['home']
     match_dict['home_fuorigioco'] = 0 if value is None else int(value)
     value = stats['Offsides']['away']
     match_dict['away_fuorigioco'] = 0 if value is None else int(value)
-    value = stats['Ball Possession']['home'].replace("%", "")
-    match_dict['home_possesso_palla'] = 50 if value is None else int(value)
-    value = stats['Ball Possession']['away'].replace("%", "")
-    match_dict['away_possesso_palla'] = 50 if value is None else int(value)
-    value = stats['Yellow Cards']['home']
-    match_dict['home_cartellini_gialli'] = 0 if value is None else int(value)
-    value = stats['Yellow Cards']['away']
-    match_dict['away_cartellini_gialli'] = 0 if value is None else int(value)
-    value = stats['Red Cards']['home']
-    match_dict['home_cartellini_rossi'] = 0 if value is None else int(value)
-    value = stats['Red Cards']['away']
-    match_dict['away_cartellini_rossi'] = 0 if value is None else int(value)
     value = stats['Goalkeeper Saves']['home']
     match_dict['home_parate'] = 0 if value is None else int(value)
     value = stats['Goalkeeper Saves']['away']
     match_dict['away_parate'] = 0 if value is None else int(value)
+    value = stats['Fouls']['home']
+    match_dict['home_falli'] = 0 if value is None else int(value)
+    value = stats['Fouls']['away']
+    match_dict['away_falli'] = 0 if value is None else int(value)
+    value = stats['Red Cards']['home']
+    match_dict['home_cartellini_rossi'] = 0 if value is None else int(value)
+    value = stats['Red Cards']['away']
+    match_dict['away_cartellini_rossi'] = 0 if value is None else int(value)
+    value = stats['Yellow Cards']['home']
+    match_dict['home_cartellini_gialli'] = 0 if value is None else int(value)
+    value = stats['Yellow Cards']['away']
+    match_dict['away_cartellini_gialli'] = 0 if value is None else int(value)
     value = stats['Total passes']['home']
     match_dict['home_passaggi_totali'] = 0 if value is None else int(value)
     value = stats['Total passes']['away']
@@ -215,9 +221,9 @@ def stat_to_dict(response, match_dict):
 # save match on df for future training
 def save(df):
     file_path = os.path.dirname(os.path.abspath(__file__))
-    fixture_id = df.loc[:, 'fixture_id'][0]
+    fixture_id = str(df.loc[:, 'fixture_id'][0])
     with open(f"{file_path}/../res/fixture_ids", "r") as f:
-        fixture_ids = [line.replace("\n", "").strip() for line in f.readlines()]
+        fixture_ids = [line.replace("\n", "") for line in f.readlines()]
     if fixture_id not in fixture_ids:
         with open(f"{file_path}/../res/fixture_ids", "a") as f:
             f.write(f"{fixture_id}\n")
@@ -233,8 +239,8 @@ def ended_matches():
     file_path = os.path.dirname(os.path.abspath(__file__))
     df = pd.read_csv(f'{file_path}/../res/temp.csv', index_col=0)
     with open(f"{file_path}/../res/fixture_ids", "r") as f:
-        fixture_ids = [line.replace("\n", "").strip() for line in f.readlines()]
-    keys = json.load(open("../keys.js"))
+        fixture_ids = [line.replace("\n", "") for line in f.readlines()]
+    keys = json.load(open(f"{file_path}/../keys.js"))
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
         'x-rapidapi-key': keys['x-rapidapi-key']
@@ -275,16 +281,19 @@ def live_matches_producer(out_q, minute_threshold):
         for match in matches_list:
             if match['minute'] < minute_threshold:
                 continue
+            print(f"match: {match['home']}-{match['away']}\n")
             resp = get_match_statistics(match['fixture_id'])
             stat_present = stat_to_dict(resp, match)
             if not stat_present:
+                print("no statistics available")
                 continue
             resp = get_prematch_odds(match['fixture_id'], label_dict['Goals Over/Under'])
             prematch_odds_uo_to_dict(resp, match)
             resp = get_prematch_odds(match['fixture_id'], label_dict['Match Winner'])
             n_api_call += 3
             prematch_odds_1x2_to_dict(resp, match)
-            df = pd.DataFrame(data=match)
+            df = pd.DataFrame([match])
             out_q.put(df)
             save(df)
+        print("pause..............\n")
         time.sleep(301)

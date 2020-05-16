@@ -20,18 +20,21 @@ def live_matches_producer(out_q, minute_threshold):
         for match in matches_list:
             if match['minute'] < minute_threshold:
                 continue
+            print(f"match: {match['home']}-{match['away']}\n")
             resp = API_connect.get_match_statistics(match['fixture_id'])
             stat_present = API_connect.stat_to_dict(resp, match)
             if not stat_present:
+                print("no statistics available")
                 continue
             resp = API_connect.get_prematch_odds(match['fixture_id'], label_dict['Goals Over/Under'])
             API_connect.prematch_odds_uo_to_dict(resp, match)
             resp = API_connect.get_prematch_odds(match['fixture_id'], label_dict['Match Winner'])
             n_api_call += 3
             API_connect.prematch_odds_1x2_to_dict(resp, match)
-            df = pd.DataFrame(data=match)
+            df = pd.DataFrame([match])
             out_q.put(df)
             API_connect.save(df)
+        print("pause..............\n")
         time.sleep(301)
 
 
@@ -51,18 +54,17 @@ def predictions_prod_cons(in_q, out_q, prob_threshold):
     clf = train_set.Modeling.get_prod_model()
 
     while True:
-        input_df = in_q.get()
-        # drop fixture id col
-        input_df.drop(columns=['fixture_id'], inplace=True)
-        input_prematch_odds = input_stream.Preprocessing.execute(
-            input_df, train_df, cat_cols)
+        input_df = pd.DataFrame(in_q.get())
+        input_prematch_odds = input_stream.Preprocessing.execute(input_df,
+                                                                 train_df,
+                                                                 cat_cols)
         test_X = input_df.drop(columns=cat_cols)
         get_predict_proba(clf, test_X, input_df)
         predictions_df = prematch_odds_based(input_df, input_prematch_odds)
         minute = predictions_df.loc[:, 'minute'][0]
         home = predictions_df.loc[:, 'home'][0]
         away = predictions_df.loc[:, 'away'][0]
-        market_name = predictions_df.loc[:, 'market_name'][0]
+        market_name = 'over 2.5'
         prediction = predictions_df.loc[:, 'prediction_final'][0]
         probability = predictions_df.loc[:, 'probability_final_over'][0]
         prediction_obj = Prediction(minute, home, away, market_name, prediction, probability)
@@ -78,7 +80,7 @@ def betfair_consumer(in_q, max_exposure, bets_dict_init, risk_level_high, risk_l
     bets_dict = dict(bets_dict_init)
     trading = betfair.login()
     balance = trading.account.get_account_funds().available_to_bet_balance
-    number_bets = bets_dict.values().reduce(sum)
+    number_bets = sum(bets_dict.values())
     bet_size = max_exposure / number_bets
     while True:
         if not betfair.check_exposure(trading, balance, max_exposure):
@@ -89,17 +91,20 @@ def betfair_consumer(in_q, max_exposure, bets_dict_init, risk_level_high, risk_l
             continue
         bets_dict = betfair.restore_dict(trading, bets_dict, bets_dict_init, balance)
         prediction_obj = in_q.get()
+        print("trying to bet.....\n")
         soccer_df = betfair.get_soccer_df(trading, in_play_only=True)
         event_id = betfair.get_event_id(soccer_df, prediction_obj)
         if event_id == 'ERR':
+            print('not event id')
             continue
         market_id = betfair.get_market_id(trading, event_id, prediction_obj)
         if market_id == 'ERR':
+            print('not market id')
             continue
         runners_df = betfair.get_runners_df(trading, market_id)
         execute_bet, selection_id, odd, size = betfair.bet_algo(bet_size, bets_dict,
-                                                        risk_level_high, risk_level_medium,
-                                                        runners_df, prediction_obj)
+                                                                risk_level_high, risk_level_medium,
+                                                                runners_df, prediction_obj)
         if execute_bet:
             print(f"Bet to be placed on {prediction_obj.home}-{prediction_obj.away}, \
                   minute: {prediction_obj.minute}, prediction: {prediction_obj.prediction}, \
@@ -128,4 +133,4 @@ if __name__ == "__main__":
         signal.pause()
     except KeyboardInterrupt:
         print('\n! Received keyboard interrupt, quitting threads.\n')
-        API_connect.ended_matches()
+        # API_connect.ended_matches()

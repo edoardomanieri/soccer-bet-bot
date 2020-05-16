@@ -11,7 +11,7 @@ def login():
     certs_path = f"{file_path}/../certs"
 
     # create trading instance
-    keys = json.load(open("../keys.js"))
+    keys = json.load(open(f"{file_path}/../keys.js"))
     trading = betfairlightweight.APIClient(username=keys['betfair-username'],
                                            password=keys['betfair-password'],
                                            app_key=keys['betfair-key-delay'],
@@ -37,7 +37,7 @@ def get_soccer_df(trading, in_play_only=True):
 
     # Create a DataFrame with all the events by iterating over each event object
     soccer_events_df = pd.DataFrame({
-        'Event Name': [event_object.event.name for event_object in soccer_events],
+        'Event Name': [event_object.event.name.lower() for event_object in soccer_events],
         'Event ID': [event_object.event.id for event_object in soccer_events],
         'Event Venue': [event_object.event.venue for event_object in soccer_events],
         'Country Code': [event_object.event.country_code for event_object in soccer_events],
@@ -49,9 +49,9 @@ def get_soccer_df(trading, in_play_only=True):
 
 
 def get_event_id(soccer_df, prediction_obj):
-    event_id_df = soccer_df.loc[soccer_df['Event Name'].str.lower().contains(prediction_obj.home), 'Event ID']
+    event_id_df = soccer_df.loc[soccer_df['Event Name'].str.contains(prediction_obj.home), 'Event ID']
     if len(event_id_df) == 0:
-        event_id_df = soccer_df.loc[soccer_df['Event Name'].str.lower().contains(prediction_obj.away), 'Event ID']
+        event_id_df = soccer_df.loc[soccer_df['Event Name'].str.contains(prediction_obj.away), 'Event ID']
     if len(event_id_df) == 0:
         event_id = 'ERR'
     else:
@@ -74,7 +74,7 @@ def get_market_id(trading, event_id, prediction_obj):
         'Total Matched': [market_cat_object.total_matched for market_cat_object in market_catalogues],
     })
 
-    market_id_df = market_df.loc[market_df['Market Name'].str.lower().contains(prediction_obj.market_name), 'Market ID']
+    market_id_df = market_df.loc[market_df['Market Name'].str.contains(prediction_obj.market_name), 'Market ID']
     if len(market_id_df) == 0:
         market_id = 'ERR'
     else:
@@ -150,8 +150,9 @@ def get_runners_df(trading, market_id):
     return runners_df
 
 
-def bet_algo(bet_size, bets_dict, risk_level_high, risk_level_medium, runners_df, prediction_obj):
-    selection_idx = prediction_obj.prediction  # da modificare
+def bet_algo(bet_size, bets_dict, risk_level_high, risk_level_medium,
+             runners_df, prediction_obj):
+    selection_idx = 0 if prediction_obj.prediction == 'under' else 1  # da testare
     selection_id = runners_df.loc[:, 'Selection ID'][selection_idx]
     odd = runners_df.loc[runners_df['Selection ID'] == selection_id, 'Best Back Price'][0]
     size_available = runners_df.loc[runners_df['Selection ID'] == selection_id, 'Best Back Size'][0]
@@ -210,7 +211,7 @@ def update_bets_dict(trading, bets_dict, odd, risk_level_high, risk_level_medium
         bets_dict['low'] -= 1
     else:
         bets_dict['medium'] -= 1
-    bets_remaining = bets_dict.values().reduce(sum)
+    bets_remaining = sum(bets_dict.values())
     current_balance = trading.account.get_account_funds().available_to_bet_balance
     if bets_remaining == 0 and current_balance + max_exposure > balance:
         bets_dict['high'] = 1
@@ -226,11 +227,13 @@ def restore_dict(trading, bets_dict, bets_dict_init, balance):
         return bets_dict
 
 
-def main(in_q, max_exposure, bets_dict_init, risk_level_high, risk_level_medium):
+def main(in_q, max_exposure, bets_dict_init, risk_level_high, 
+         risk_level_medium):
     bets_dict = dict(bets_dict_init)
     trading = login()
     balance = trading.account.get_account_funds().available_to_bet_balance
-    number_bets = bets_dict.values().reduce(sum)
+    number_bets = sum(bets_dict.values())
+    # divide total exposure on number of bets
     bet_size = max_exposure / number_bets
     while True:
         if not check_exposure(trading, balance, max_exposure):
@@ -244,15 +247,21 @@ def main(in_q, max_exposure, bets_dict_init, risk_level_high, risk_level_medium)
         soccer_df = get_soccer_df(trading, in_play_only=True)
         event_id = get_event_id(soccer_df, prediction_obj)
         if event_id == 'ERR':
+            print('not event id')
             continue
         market_id = get_market_id(trading, event_id, prediction_obj)
         if market_id == 'ERR':
+            print('not market id')
             continue
         runners_df = get_runners_df(trading, market_id)
         execute_bet, selection_id, odd, size = bet_algo(bet_size, bets_dict,
                                                         risk_level_high, risk_level_medium,
                                                         runners_df, prediction_obj)
         if execute_bet:
+            print(f"Bet to be placed on {prediction_obj.home}-{prediction_obj.away}, \
+                  minute: {prediction_obj.minute}, prediction: {prediction_obj.prediction}, \
+                  odd: {odd}, money: {size}\n")
             res = place_order(trading, odd, size, selection_id, market_id)
             if res:
-                update_bets_dict(trading, bets_dict, odd, risk_level_high, risk_level_medium, balance, max_exposure)
+                update_bets_dict(trading, bets_dict, odd, risk_level_high, 
+                                 risk_level_medium, balance, max_exposure)

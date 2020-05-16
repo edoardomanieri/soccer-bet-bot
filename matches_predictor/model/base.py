@@ -34,7 +34,7 @@ class Preprocessing():
         return df_new
 
     @staticmethod
-    def normalize_prematch_odds(df):
+    def prematch_odds_to_prob(df):
         tmp = (1 - ((1 / df['odd_over']) +
                     (1 / df['odd_under']))) / 2
         df['odd_over'] = (1 / df['odd_over']) + tmp
@@ -60,7 +60,7 @@ class Preprocessing():
     @staticmethod
     def pop_prematch_odds_data(df):
         prematch_odds_input = df.loc[:, [
-            'id_partita', 'minute', 'odd_under', 'odd_over']].copy()
+            'id_partita', 'minute', 'odd_under', 'odd_over']]
         df.drop(columns=['odd_1', 'odd_2', 'odd_X',
                          'odd_over', 'odd_under'], inplace=True)
         return prematch_odds_input
@@ -76,7 +76,7 @@ class Preprocessing():
     def save(df):
         file_path = os.path.dirname(os.path.abspath(__file__))
         df.reset_index(drop=True).to_csv(
-            f"{file_path}/../res/dataframes/training_goals.csv")
+            f"{file_path}/../../res/dataframes/training_goals.csv")
 
 
 class Modeling():
