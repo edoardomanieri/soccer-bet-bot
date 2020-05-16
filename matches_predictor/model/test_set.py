@@ -10,11 +10,11 @@ class Retrieving(base.Retrieving):
     def starting_df(cat_cols, api_missing_cols):
         file_path = os.path.dirname(os.path.abspath(__file__))
         # import dataset
-        df_API = pd.read_csv(f"{file_path}/../res/df_api.csv", index_col=0, header=0)
+        df_API = pd.read_csv(f"{file_path}/../../res/df_api.csv", index_col=0, header=0)
         # put on the API df all nans (will be dropped later on)
         for col in api_missing_cols:
             df_API[col] = np.nan
-        df_scraping = pd.read_csv(f"{file_path}/../res/df_scraping.csv", index_col=0, header=0)
+        df_scraping = pd.read_csv(f"{file_path}/../../res/df_scraping.csv", index_col=0, header=0)
         df = pd.concat([df_API, df_scraping], axis=0, ignore_index=True)
         # change data type
         for col in df.columns:

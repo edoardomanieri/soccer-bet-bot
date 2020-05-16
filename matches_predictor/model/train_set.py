@@ -32,11 +32,11 @@ class Retrieving(base.Retrieving):
     def starting_df(cat_cols, api_missing_cols):
         file_path = os.path.dirname(os.path.abspath(__file__))
         # import dataset
-        df_API = pd.read_csv(f"{file_path}/../res/df_api.csv", index_col=0, header=0)
+        df_API = pd.read_csv(f"{file_path}/../../res/df_api.csv", index_col=0, header=0)
         # put on the API df all nans (will be dropped later on)
         for col in api_missing_cols:
             df_API[col] = np.nan
-        df_scraping = pd.read_csv(f"{file_path}/../res/df_scraping.csv", index_col=0, header=0)
+        df_scraping = pd.read_csv(f"{file_path}/../../res/df_scraping.csv", index_col=0, header=0)
         df = pd.concat([df_API, df_scraping], axis=0, ignore_index=True)
         # change data type
         for col in df.columns:
@@ -176,35 +176,35 @@ class Modeling(base.Modeling):
         clf.fit(train_X, train_y)
         file_path = os.path.dirname(os.path.abspath(__file__))
         # interpretations
-        if not os.path.exists(f"{file_path}/../res/summary_plot_shap.png"):
+        if not os.path.exists(f"{file_path}/../../res/summary_plot_shap.png"):
             explainer = shap.TreeExplainer(clf)
             shap_values = explainer.shap_values(train_X.values)
             shap.summary_plot(shap_values, train_X, show=False)
             plt.tight_layout()
-            plt.savefig(f"{file_path}/../res/summary_plot_shap.png")
+            plt.savefig(f"{file_path}/../../res/summary_plot_shap.png")
             plt.show()
             shap.summary_plot(shap_values, train_X, plot_type="bar", show=False)
             plt.tight_layout()
-            plt.savefig(f"{file_path}/../res/summary_plot_shap_bar.png")
+            plt.savefig(f"{file_path}/../../res/summary_plot_shap_bar.png")
             plt.show()
         prod_path = "production" if prod else "development"
-        path = f"{file_path}/../res/models/{prod_path}/goals.joblib"
+        path = f"{file_path}/../../res/models/{prod_path}/goals.joblib"
         joblib.dump(clf, path)
 
     @staticmethod
     def save_model(clf):
         file_path = os.path.dirname(os.path.abspath(__file__))
-        path = f"{file_path}/../res/models/development/goals.joblib"
+        path = f"{file_path}/../../res/models/development/goals.joblib"
         joblib.dump(clf, path)
 
     @staticmethod
     def get_prod_model():
         file_path = os.path.dirname(os.path.abspath(__file__))
-        path = f"{file_path}/../res/models/production/goals.joblib"
+        path = f"{file_path}/../../res/models/production/goals.joblib"
         return joblib.load(path)
 
     @staticmethod
     def get_dev_model():
         file_path = os.path.dirname(os.path.abspath(__file__))
-        path = f"{file_path}/../res/models/development/goals.joblib"
+        path = f"{file_path}/../../res/models/development/goals.joblib"
         return joblib.load(path)

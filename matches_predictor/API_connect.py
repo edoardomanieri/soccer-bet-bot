@@ -152,32 +152,64 @@ def get_match_statistics(fixture_id):
 
 def stat_to_dict(response, match_dict):
     resp_dict = json.loads(response)
-    match_dict['home_tiri_in_porta'] = int(resp_dict['api']['statistics']['Shots on Goal']['home'])
-    match_dict['away_tiri_in_porta'] = int(resp_dict['api']['statistics']['Shots on Goal']['away'])
-    match_dict['home_tiri_fuori'] = int(resp_dict['api']['statistics']['Shots off Goal']['home'])
-    match_dict['away_tiri_fuori'] = int(resp_dict['api']['statistics']['Shots off Goal']['away'])
-    match_dict['home_tiri'] = int(resp_dict['api']['statistics']['Total Shots']['home'])
-    match_dict['away_tiri'] = int(resp_dict['api']['statistics']['Total Shots']['away'])
-    match_dict['home_tiri_fermati'] = int(resp_dict['api']['statistics']['Blocked Shots']['home'])
-    match_dict['away_tiri_fermati'] = int(resp_dict['api']['statistics']['Blocked Shots']['away'])
-    match_dict['home_falli'] = int(resp_dict['api']['statistics']['Fouls']['home'])
-    match_dict['away_falli'] = int(resp_dict['api']['statistics']['Fouls']['away'])
-    match_dict['home_calci_d_angoli'] = int(resp_dict['api']['statistics']['Corner Kicks']['home'])
-    match_dict['away_calci_d_angoli'] = int(resp_dict['api']['statistics']['Corner Kicks']['away'])
-    match_dict['home_fuorigioco'] = int(resp_dict['api']['statistics']['Offsides']['home'])
-    match_dict['away_fuorigioco'] = int(resp_dict['api']['statistics']['Offsides']['away'])
-    match_dict['home_possesso_palla'] = int(resp_dict['api']['statistics']['Ball Possession']['home'].replace("%", ""))
-    match_dict['away_possesso_palla'] = int(resp_dict['api']['statistics']['Ball Possession']['away'].replace("%", ""))
-    match_dict['home_cartellini_gialli'] = int(resp_dict['api']['statistics']['Yellow Cards']['home'])
-    match_dict['away_cartellini_gialli'] = int(resp_dict['api']['statistics']['Yellow Cards']['away'])
-    match_dict['home_cartellini_rossi'] = len(resp_dict['api']['statistics']['Red Cards']['home'])
-    match_dict['away_cartellini_rossi'] = len(resp_dict['api']['statistics']['Red Cards']['away'])
-    match_dict['home_parate'] = int(resp_dict['api']['statistics']['Goalkeeper Saves']['home'])
-    match_dict['away_parate'] = int(resp_dict['api']['statistics']['Goalkeeper Saves']['away'])
-    match_dict['home_passaggi_totali'] = int(resp_dict['api']['statistics']['Total passes']['home'])
-    match_dict['away_passaggi_totali'] = int(resp_dict['api']['statistics']['Total passes']['away'])
-    match_dict['home_passaggi_completati'] = int(resp_dict['api']['statistics']['Passes accurate']['home'])
-    match_dict['away_passaggi_completati'] = int(resp_dict['api']['statistics']['Passes accurate']['away'])
+    stats = resp_dict['api']['statistics']
+    if len(stats) == 0:
+        return False
+    value = stats['Shots on Goal']['home']
+    match_dict['home_tiri_in_porta'] = 0 if value is None else int(value)
+    value = stats['Shots on Goal']['away']
+    match_dict['away_tiri_in_porta'] = 0 if value is None else int(value)
+    value = stats['Shots off Goal']['home']
+    match_dict['home_tiri_fuori'] = 0 if value is None else int(value)
+    value = stats['Shots off Goal']['away']
+    match_dict['away_tiri_fuori'] = 0 if value is None else int(value)
+    value = stats['Total Shots']['home']
+    match_dict['home_tiri'] = 0 if value is None else int(value)
+    value = stats['Total Shots']['away']
+    match_dict['away_tiri'] = 0 if value is None else int(value)
+    value = stats['Blocked Shots']['home']
+    match_dict['home_tiri_fermati'] = 0 if value is None else int(value)
+    value = stats['Blocked Shots']['away']
+    match_dict['away_tiri_fermati'] = 0 if value is None else int(value)
+    value = stats['Fouls']['home']
+    match_dict['home_falli'] = 0 if value is None else int(value)
+    value = stats['Fouls']['away']
+    match_dict['away_falli'] = 0 if value is None else int(value)
+    value = stats['Corner Kicks']['home']
+    match_dict['home_calci_d_angoli'] = 0 if value is None else int(value)
+    value = stats['Corner Kicks']['away']
+    match_dict['away_calci_d_angoli'] = 0 if value is None else int(value)
+    value = stats['Corner Kicks']['home']
+    match_dict['home_calci_d_angoli'] = 0 if value is None else int(value)
+    value = stats['Offsides']['home']
+    match_dict['home_fuorigioco'] = 0 if value is None else int(value)
+    value = stats['Offsides']['away']
+    match_dict['away_fuorigioco'] = 0 if value is None else int(value)
+    value = stats['Ball Possession']['home'].replace("%", "")
+    match_dict['home_possesso_palla'] = 50 if value is None else int(value)
+    value = stats['Ball Possession']['away'].replace("%", "")
+    match_dict['away_possesso_palla'] = 50 if value is None else int(value)
+    value = stats['Yellow Cards']['home']
+    match_dict['home_cartellini_gialli'] = 0 if value is None else int(value)
+    value = stats['Yellow Cards']['away']
+    match_dict['away_cartellini_gialli'] = 0 if value is None else int(value)
+    value = stats['Red Cards']['home']
+    match_dict['home_cartellini_rossi'] = 0 if value is None else int(value)
+    value = stats['Red Cards']['away']
+    match_dict['away_cartellini_rossi'] = 0 if value is None else int(value)
+    value = stats['Goalkeeper Saves']['home']
+    match_dict['home_parate'] = 0 if value is None else int(value)
+    value = stats['Goalkeeper Saves']['away']
+    match_dict['away_parate'] = 0 if value is None else int(value)
+    value = stats['Total passes']['home']
+    match_dict['home_passaggi_totali'] = 0 if value is None else int(value)
+    value = stats['Total passes']['away']
+    match_dict['away_passaggi_totali'] = 0 if value is None else int(value)
+    value = stats['Passes accurate']['home']
+    match_dict['home_passaggi_completati'] = 0 if value is None else int(value)
+    value = stats['Passes accurate']['away']
+    match_dict['away_passaggi_completati'] = 0 if value is None else int(value)
+    return True  # false if there aren't any stats
 
 
 # save match on df for future training
@@ -192,6 +224,7 @@ def save(df):
     df_before = pd.read_csv(f'{file_path}/../res/temp.csv', index_col=0)
     df['home_final_score'] = np.nan
     df['away_final_score'] = np.nan
+    df.drop(columns=['fixture_id'], inplace=True)
     df_new = pd.concat([df_before, df])
     df_new.to_csv(f'{file_path}/../res/temp.csv')
 
@@ -243,7 +276,9 @@ def live_matches_producer(out_q, minute_threshold):
             if match['minute'] < minute_threshold:
                 continue
             resp = get_match_statistics(match['fixture_id'])
-            stat_to_dict(resp, match)
+            stat_present = stat_to_dict(resp, match)
+            if not stat_present:
+                continue
             resp = get_prematch_odds(match['fixture_id'], label_dict['Goals Over/Under'])
             prematch_odds_uo_to_dict(resp, match)
             resp = get_prematch_odds(match['fixture_id'], label_dict['Match Winner'])

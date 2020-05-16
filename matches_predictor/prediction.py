@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from matches_predictor import train_set, input_stream
+from matches_predictor.model import train_set, input_stream
 import os
 
 
@@ -49,30 +49,30 @@ def get_predict_proba(clf, test_X, df):
 def get_live_predictions(reprocess=False, retrain=False):
 
     file_path = os.path.dirname(os.path.abspath(__file__))
-    cat_col = ['home', 'away', 'campionato', 'date', 'id_partita']
+    cat_cols = ['home', 'away', 'campionato', 'date', 'id_partita']
     outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
     api_missing_cols = ['home_punizioni', 'away_punizioni', 'home_rimesse_laterali', 'away_rimesse_laterali',
                         'home_contrasti', 'away_contrasti', 'home_attacchi', 'away_attacchi',
                         'home_attacchi_pericolosi', 'away_attacchi_pericolosi']
 
     if reprocess:
-        train_df = train_set.Retrieving.starting_df(api_missing_cols, cat_col)
-        train_set.Preprocessing.execute(train_df, cat_col, api_missing_cols)
+        train_df = train_set.Retrieving.starting_df(api_missing_cols, cat_cols)
+        train_set.Preprocessing.execute(train_df, cat_cols, api_missing_cols)
 
     train_df = pd.read_csv(
         f"{file_path}/../res/dataframes/training_goals.csv", header=0, index_col=0)
 
     input_df = input_stream.Retrieving.starting_df(cat_cols, api_missing_cols)
     input_prematch_odds = input_stream.Preprocessing.execute(
-        input_df, train_df, cat_col)
+        input_df, train_df, cat_cols)
 
     if retrain:
         clf = train_set.Modeling.get_dev_model()
         train_set.Modeling.train_model(
-            train_df, clf, cat_col, outcome_cols, prod=True)
+            train_df, clf, cat_cols, outcome_cols, prod=True)
 
     clf = train_set.Modeling.get_prod_model()
-    test_X = input_df.drop(columns=cat_col)
+    test_X = input_df.drop(columns=cat_cols)
     get_predict_proba(clf, test_X, input_df)
     predictions_df = build_output_df(input_df)
     predictions_df = prematch_odds_based(predictions_df,
@@ -113,4 +113,3 @@ def predictions_consumer(in_q, out_q, prob_threshold):
         prediction_obj = Prediction(minute, home, away, market_name, prediction, probability)
         if prediction_obj.probability > prob_threshold:
             out_q.put(prediction_obj)
-

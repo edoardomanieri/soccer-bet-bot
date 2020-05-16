@@ -92,6 +92,7 @@ def full_CV_pipeline(df, test_mask_method, clf, cat_col, missing_cols, outcome_c
         df_temp = df_temp.drop(df_temp[dropping_mask].index)
 
         train_df, test_df = _split_test_train(df_temp, sublist)
+        print(f"length of train test: {len(test_df)}")
         train_set.Preprocessing.execute(train_df, cat_col, missing_cols, prod=False)
         test_y, test_prematch_odds, test_live_odds = test_set.Preprocessing.execute(
             test_df, train_df, missing_cols)
@@ -130,7 +131,8 @@ def randomizedsearch_CV(df, test_mask_method, estimator, cat_col, missing_cols, 
         estimator.set_params(**param_dict)
         selected_estimator = clone(estimator)
         avg_accs_thresh, avg_accs_05 = full_CV_pipeline(
-            df, test_mask_method, selected_estimator, cat_col, missing_cols, outcome_cols, cv=cv, threshold=threshold)
+            df, test_mask_method, selected_estimator, cat_col, 
+            missing_cols, outcome_cols, cv=cv, threshold=threshold)
         print(param_dict)
         print(f"Accuracy with threshold: {avg_accs_thresh}")
         print(f"Accuracy general: {avg_accs_05}")

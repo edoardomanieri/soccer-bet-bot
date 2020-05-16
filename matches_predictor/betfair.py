@@ -165,6 +165,7 @@ def bet_algo(bet_size, bets_dict, risk_level_high, risk_level_medium, runners_df
         return False, 0, 0
 
     # see if the odd is worth it
+    print(f"model probability: {prediction_obj.probability}, odd probability: {1/odd}")
     if prediction_obj.probability < 1/odd:
         return False, 0, 0
 
