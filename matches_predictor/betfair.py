@@ -55,7 +55,7 @@ def get_event_id(soccer_df, prediction_obj):
     if len(event_id_df) == 0:
         event_id = 'ERR'
     else:
-        event_id = event_id_df[0]
+        event_id = event_id_df.reset_index(drop=True)['Event ID'][0]
     return event_id
 
 
@@ -78,7 +78,7 @@ def get_market_id(trading, event_id, prediction_obj):
     if len(market_id_df) == 0:
         market_id = 'ERR'
     else:
-        market_id = market_id_df[0]
+        market_id = market_id_df.reset_index(drop=True)['Market ID'][0]
     return market_id
 
 

@@ -3,3 +3,7 @@ numpy
 pandas
 scikit-learn
 xgboost
+requests
+json
+os
+time

@@ -131,7 +131,7 @@ def randomizedsearch_CV(df, test_mask_method, estimator, cat_col, missing_cols, 
         estimator.set_params(**param_dict)
         selected_estimator = clone(estimator)
         avg_accs_thresh, avg_accs_05 = full_CV_pipeline(
-            df, test_mask_method, selected_estimator, cat_col, 
+            df, test_mask_method, selected_estimator, cat_col,
             missing_cols, outcome_cols, cv=cv, threshold=threshold)
         print(param_dict)
         print(f"Accuracy with threshold: {avg_accs_thresh}")

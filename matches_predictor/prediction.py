@@ -98,6 +98,7 @@ def predictions_prod_cons(in_q, out_q, prob_threshold):
 
     while True:
         input_df = pd.DataFrame(in_q.get())
+        input_df.drop(columns=['fixture_id'], inplace=True)
         input_prematch_odds = input_stream.Preprocessing.execute(input_df,
                                                                  train_df,
                                                                  cat_cols)

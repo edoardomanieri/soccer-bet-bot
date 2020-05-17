@@ -33,7 +33,8 @@ def live_matches_producer(out_q, minute_threshold):
             API_connect.prematch_odds_1x2_to_dict(resp, match)
             df = pd.DataFrame([match])
             out_q.put(df)
-            API_connect.save(df)
+            df_to_save = df.copy()
+            # API_connect.save(df_to_save)
         print("pause..............\n")
         time.sleep(301)
 
@@ -55,6 +56,7 @@ def predictions_prod_cons(in_q, out_q, prob_threshold):
 
     while True:
         input_df = pd.DataFrame(in_q.get())
+        input_df.drop(columns=['fixture_id'], inplace=True)
         input_prematch_odds = input_stream.Preprocessing.execute(input_df,
                                                                  train_df,
                                                                  cat_cols)
@@ -76,7 +78,8 @@ def predictions_prod_cons(in_q, out_q, prob_threshold):
               eventual prediction: {prediction_obj.prediction}\n")
 
 
-def betfair_consumer(in_q, max_exposure, bets_dict_init, risk_level_high, risk_level_medium):
+def betfair_consumer(in_q, max_exposure, bets_dict_init, risk_level_high, 
+                     risk_level_medium):
     bets_dict = dict(bets_dict_init)
     trading = betfair.login()
     balance = trading.account.get_account_funds().available_to_bet_balance
@@ -119,10 +122,10 @@ if __name__ == "__main__":
     # params
     minute_threshold = 30
     probability_threshold = 0.7
-    bets_dict = {'high': 1, 'medium': 2, 'low': 3}
+    bets_dict = {'high': 1, 'medium': 2, 'low': 4}
     risk_level_high = 1.6
     risk_level_medium = 1.2
-    max_exposure = 12
+    max_exposure = 14
     try:
         live_matches_thread = Thread(target=live_matches_producer, args=(q1, minute_threshold, ))
         predictions_thread = Thread(target=predictions_prod_cons, args=(q1, q2, probability_threshold, ))

@@ -30,5 +30,5 @@ def test_api_connect():
     API_connect.prematch_odds_uo_to_dict(resp, match)
     resp = API_connect.get_prematch_odds(match['fixture_id'], label_dict['Match Winner'])
     API_connect.prematch_odds_1x2_to_dict(resp, match)
-    df = pd.DataFrame(data=match)
+    df = pd.DataFrame([match])
     check_df_correctness(df)

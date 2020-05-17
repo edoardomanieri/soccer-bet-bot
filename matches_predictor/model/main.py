@@ -21,7 +21,7 @@ if __name__ == "__main__":
                         'away_attacchi_pericolosi']
     params = {
         'learning_rate': [0.05, 0.1, 0.15, 0.20, 0.3],
-        'n_estimators': [200, 300, 500],
+        'n_estimators': [200, 300, 500, 700],
         'min_child_weight': [3, 5, 10, 15],
         'gamma': [0.3, 0.5, 0.7, 1, 1.5],
         'subsample': [0.4, 0.6, 0.8, 1.0],
@@ -43,5 +43,5 @@ if __name__ == "__main__":
     best_acc, best_params = validation.randomizedsearch_CV(
         df, mask_minute3070_1goal, clf, cat_cols,
         api_missing_cols, outcome_cols, params,
-        cv=5, trials=1, threshold=prob_threshold)
+        cv=5, trials=50, threshold=prob_threshold)
     print(f"Best threshold {prob_threshold} accuracy 1 goal and 30-70 minute mask: {best_acc}")
