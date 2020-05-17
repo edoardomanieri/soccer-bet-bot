@@ -156,7 +156,6 @@ class Preprocessing(base.Preprocessing):
         Preprocessing.drop_nan(train_df)
         Preprocessing.impute_nan(train_df)
         Preprocessing.add_outcome_col(train_df)
-        Preprocessing.add_prematch_vars(train_df)
         Preprocessing.add_input_cols(train_df)
         if prod:
             Preprocessing.save(train_df)

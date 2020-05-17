@@ -101,14 +101,12 @@ class Preprocessing(base.Preprocessing):
 
     @staticmethod
     def add_prematch_vars(training_df, test_df):
-
         test_df['avg_camp_goals'] = 0
         campionati = test_df['campionato'].unique()
 
         for camp in campionati:
             if camp not in training_df['campionato'].unique():
-                test_df.loc[test_df['campionato'] == camp,
-                            'avg_camp_goals'] = training_df['avg_camp_goals'].mean()
+                test_df.loc[test_df['campionato'] == camp, 'avg_camp_goals'] = training_df['avg_camp_goals'].mean()
             else:
                 test_df.loc[test_df['campionato'] == camp, 'avg_camp_goals'] = training_df.loc[training_df['campionato'] == camp, :].reset_index()[
                     'avg_camp_goals'][0]
@@ -152,6 +150,5 @@ class Preprocessing(base.Preprocessing):
         input_prematch_odds = Preprocessing.pop_prematch_odds_data(input_df)
         Preprocessing.pop_live_odds_uo(input_df)
         Preprocessing.drop_outcome_cols(input_df)
-        Preprocessing.add_prematch_vars(train_df, input_df)
         Preprocessing.add_input_cols(input_df)
         return input_prematch_odds

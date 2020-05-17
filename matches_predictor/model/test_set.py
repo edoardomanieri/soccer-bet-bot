@@ -149,7 +149,6 @@ class Preprocessing(base.Preprocessing):
         Preprocessing.prematch_odds_to_prob(test_df)
         test_prematch_odds = Preprocessing.pop_prematch_odds_data(test_df)
         test_live_odds = Preprocessing.pop_live_odds_data(test_df)
-        Preprocessing.add_prematch_vars(train_df, test_df)
         Preprocessing.add_input_cols(test_df)
         test_y = test_df.loc[:, ['id_partita', 'minute', 'final_uo']]
         Preprocessing.drop_outcome_cols(test_df)
