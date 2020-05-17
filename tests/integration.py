@@ -20,6 +20,8 @@ def live_matches_producer(out_q, minute_threshold):
         for match in matches_list:
             if match['minute'] < minute_threshold:
                 continue
+            if match['home_score'] + match['away_score'] > 2:
+                continue
             print(f"match: {match['home']}-{match['away']}\n")
             resp = API_connect.get_match_statistics(match['fixture_id'])
             stat_present = API_connect.stat_to_dict(resp, match)
@@ -33,7 +35,7 @@ def live_matches_producer(out_q, minute_threshold):
             API_connect.prematch_odds_1x2_to_dict(resp, match)
             df = pd.DataFrame([match])
             out_q.put(df)
-            df_to_save = df.copy()
+            # df_to_save = df.copy()
             # API_connect.save(df_to_save)
         print("pause..............\n")
         time.sleep(301)
@@ -69,16 +71,18 @@ def predictions_prod_cons(in_q, out_q, prob_threshold):
         market_name = 'over 2.5'
         prediction = predictions_df.loc[:, 'prediction_final'][0]
         probability = predictions_df.loc[:, 'probability_final_over'][0]
-        prediction_obj = Prediction(minute, home, away, market_name, prediction, probability)
+        model_probability = predictions_df.loc[:, 'probability_over'][0]
+        prediction_obj = Prediction(minute, home, away, market_name, prediction, probability, model_probability)
         if prediction_obj.probability > prob_threshold:
             out_q.put(prediction_obj)
         print(f"{prediction_obj.home}-{prediction_obj.away}, \
               minute: {prediction_obj.minute}, \
               probability: {prediction_obj.probability}, \
+              model_probability: {prediction_obj.model_probability}, \
               eventual prediction: {prediction_obj.prediction}\n")
 
 
-def betfair_consumer(in_q, max_exposure, bets_dict_init, risk_level_high, 
+def betfair_consumer(in_q, max_exposure, bets_dict_init, risk_level_high,
                      risk_level_medium):
     bets_dict = dict(bets_dict_init)
     trading = betfair.login()
@@ -120,7 +124,7 @@ if __name__ == "__main__":
     q1 = Queue()
     q2 = Queue()
     # params
-    minute_threshold = 30
+    minute_threshold = 20
     probability_threshold = 0.7
     bets_dict = {'high': 1, 'medium': 2, 'low': 4}
     risk_level_high = 1.6

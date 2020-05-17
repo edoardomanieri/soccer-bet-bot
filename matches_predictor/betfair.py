@@ -166,8 +166,8 @@ def bet_algo(bet_size, bets_dict, risk_level_high, risk_level_medium,
         return False, 0, 0
 
     # see if the odd is worth it
-    print(f"model probability: {prediction_obj.probability}, odd probability: {1/odd}")
-    if prediction_obj.probability < 1/odd:
+    print(f"weighted probability: {prediction_obj.probability}, only model probability: {prediction_obj.model_probability}, odd probability: {1/odd}")
+    if prediction_obj.probability > 1/odd or prediction_obj.model_probability > 1/odd:
         return False, 0, 0
 
     execute_bet = True
@@ -263,5 +263,5 @@ def main(in_q, max_exposure, bets_dict_init, risk_level_high,
                   odd: {odd}, money: {size}\n")
             res = place_order(trading, odd, size, selection_id, market_id)
             if res:
-                update_bets_dict(trading, bets_dict, odd, risk_level_high, 
+                update_bets_dict(trading, bets_dict, odd, risk_level_high,
                                  risk_level_medium, balance, max_exposure)

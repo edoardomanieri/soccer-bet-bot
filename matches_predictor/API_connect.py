@@ -281,6 +281,8 @@ def live_matches_producer(out_q, minute_threshold):
         for match in matches_list:
             if match['minute'] < minute_threshold:
                 continue
+            if match['home_score'] + match['away_score'] > 2:
+                continue
             print(f"match: {match['home']}-{match['away']}\n")
             resp = get_match_statistics(match['fixture_id'])
             stat_present = stat_to_dict(resp, match)

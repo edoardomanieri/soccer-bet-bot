@@ -6,13 +6,14 @@ import os
 
 class Prediction():
 
-    def __init__(self, minute, home, away, market_name, prediction, probability):
+    def __init__(self, minute, home, away, market_name, prediction, probability, model_probability):
         self.minute = minute
         self.home = home
         self.away = away
         self.market_name = market_name
         self.prediction = prediction
         self.probability = probability if probability > 0.5 else 1 - probability
+        self.model_probability = model_probability if model_probability > 0.5 else 1 - model_probability
 
 
 def build_output_df(input_df):
@@ -38,6 +39,16 @@ def prematch_odds_based(input_pred_df, input_prematch_odds_df):
     return res_df
 
 
+def model_based(input_pred_df, input_prematch_odds_df):
+    # al 15 minuto probabilità pesate 50-50
+    res_df = input_pred_df
+    res_df['probability_final_over'] = res_df['probability_over']
+    res_df['probability_final_under'] = (1-res_df['probability_over'])
+    res_df['prediction_final_encoded'] = np.argmax(res_df[['probability_final_under', 'probability_final_over']].values, axis=1)
+    res_df['prediction_final'] = np.where(res_df['prediction_final_encoded'] == 0, 'under', 'over')
+    return res_df
+
+
 def get_predict_proba(clf, test_X, df):
     predictions = clf.predict(test_X)
     probabilities = clf.predict_proba(test_X)
@@ -50,10 +61,10 @@ def get_live_predictions(reprocess=False, retrain=False):
     file_path = os.path.dirname(os.path.abspath(__file__))
     cat_cols = ['home', 'away', 'campionato', 'date', 'id_partita']
     outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
-    api_missing_cols = ['home_punizioni', 'away_punizioni', 
+    api_missing_cols = ['home_punizioni', 'away_punizioni',
                         'home_rimesse_laterali', 'away_rimesse_laterali',
-                        'home_contrasti', 'away_contrasti', 'home_attacchi', 
-                        'away_attacchi', 'home_attacchi_pericolosi', 
+                        'home_contrasti', 'away_contrasti', 'home_attacchi',
+                        'away_attacchi', 'home_attacchi_pericolosi',
                         'away_attacchi_pericolosi']
 
     if reprocess:
@@ -85,9 +96,10 @@ def predictions_prod_cons(in_q, out_q, prob_threshold):
     file_path = os.path.dirname(os.path.abspath(__file__))
     cat_cols = ['home', 'away', 'campionato', 'date', 'id_partita']
     outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
-    api_missing_cols = ['home_punizioni', 'away_punizioni', 'home_rimesse_laterali', 'away_rimesse_laterali',
-                        'home_contrasti', 'away_contrasti', 'home_attacchi', 'away_attacchi',
-                        'home_attacchi_pericolosi', 'away_attacchi_pericolosi']
+    api_missing_cols = ['home_punizioni', 'away_punizioni', 'home_rimesse_laterali',
+                        'away_rimesse_laterali', 'home_contrasti', 'away_contrasti',
+                        'home_attacchi', 'away_attacchi','home_attacchi_pericolosi',
+                        'away_attacchi_pericolosi']
     train_df = train_set.Retrieving.starting_df(cat_cols, api_missing_cols)
     train_set.Preprocessing.execute(train_df, cat_cols, api_missing_cols)
     train_df = pd.read_csv(f"{file_path}/../res/dataframes/training_goals.csv", header=0, index_col=0)
@@ -111,10 +123,12 @@ def predictions_prod_cons(in_q, out_q, prob_threshold):
         market_name = 'Over/Under 2.5 Goals'
         prediction = predictions_df.loc[:, 'prediction_final'][0]
         probability = predictions_df.loc[:, 'probability_final_over'][0]
-        prediction_obj = Prediction(minute, home, away, market_name, prediction, probability)
+        model_probability = predictions_df.loc[:, 'probability_over'][0]
+        prediction_obj = Prediction(minute, home, away, market_name, prediction, probability, model_probability)
         if prediction_obj.probability > prob_threshold:
             out_q.put(prediction_obj)
         print(f"{prediction_obj.home}-{prediction_obj.away}, \
               minute: {prediction_obj.minute}, \
               probability: {prediction_obj.probability}, \
+              model_probability: {prediction_obj.model_probability}, \
               eventual prediction: {prediction_obj.prediction}\n")

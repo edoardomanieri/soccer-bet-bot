@@ -165,9 +165,7 @@ class Modeling(base.Modeling):
 
     @staticmethod
     def train_model(train_df, clf, cat_cols, outcome_cols, prod=True):
-        """
-        Create model and save it with joblib
-        """
+        """ Train model and save it with joblib """
         train_y = train_df['final_uo'].values
         to_drop = cat_cols + outcome_cols
         train_X = train_df.drop(columns=to_drop)

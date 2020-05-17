@@ -1,4 +1,5 @@
 from matches_predictor.model import test_set, validation
+from matches_predictor import prediction
 from xgboost import XGBClassifier
 
 if __name__ == "__main__":
@@ -35,13 +36,13 @@ if __name__ == "__main__":
     do_mask_all = False
     if do_mask_all:
         best_acc, best_params = validation.randomizedsearch_CV(
-            df, mask_all, clf, cat_cols,
+            df, mask_all, prediction.model_based, clf, cat_cols,
             api_missing_cols, outcome_cols, params,
             cv=5, trials=1, threshold=prob_threshold)
         print(f"Best threshold {prob_threshold} accuracy without mask: {best_acc}")
 
     best_acc, best_params = validation.randomizedsearch_CV(
-        df, mask_minute3070_1goal, clf, cat_cols,
+        df, mask_minute3070_1goal, prediction.prematch_odds_based, clf, cat_cols,
         api_missing_cols, outcome_cols, params,
-        cv=5, trials=50, threshold=prob_threshold)
+        cv=5, trials=5, threshold=prob_threshold)
     print(f"Best threshold {prob_threshold} accuracy 1 goal and 30-70 minute mask: {best_acc}")
