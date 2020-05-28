@@ -44,6 +44,7 @@ def live_matches_producer(out_q, minute_threshold):
 def predictions_prod_cons(in_q, out_q, prob_threshold):
     file_path = os.path.dirname(os.path.abspath(__file__))
     cat_cols = ['home', 'away', 'campionato', 'date', 'id_partita']
+    to_drop_cols = ['home', 'away', 'date', 'id_partita']
     outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
     api_missing_cols = ['home_punizioni', 'away_punizioni', 'home_rimesse_laterali', 'away_rimesse_laterali',
                         'home_contrasti', 'away_contrasti', 'home_attacchi', 'away_attacchi',
@@ -53,7 +54,7 @@ def predictions_prod_cons(in_q, out_q, prob_threshold):
     train_df = pd.read_csv(f"{file_path}/../res/dataframes/training_goals.csv", header=0, index_col=0)
     # get clf from cross validation (dev) and retrain on all the train set
     clf = train_set.Modeling.get_dev_model()
-    train_set.Modeling.train_model(train_df, clf, cat_cols, outcome_cols, prod=True)
+    train_set.Modeling.train_model(train_df, clf, to_drop_cols, outcome_cols, prod=True)
     clf = train_set.Modeling.get_prod_model()
 
     while True:

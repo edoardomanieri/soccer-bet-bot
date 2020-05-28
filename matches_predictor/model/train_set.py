@@ -155,6 +155,7 @@ class Preprocessing(base.Preprocessing):
         Preprocessing.drop_odds_cols(train_df)
         Preprocessing.drop_nan(train_df)
         Preprocessing.impute_nan(train_df)
+        Preprocessing.smooth_handling(train_df, train_df, ['campionato'])
         Preprocessing.add_outcome_col(train_df)
         Preprocessing.add_input_cols(train_df)
         if prod:
@@ -164,11 +165,10 @@ class Preprocessing(base.Preprocessing):
 class Modeling(base.Modeling):
 
     @staticmethod
-    def train_model(train_df, clf, cat_cols, outcome_cols, prod=True):
+    def train_model(train_df, clf, cols_to_drop, outcome_cols, prod=True):
         """ Train model and save it with joblib """
         train_y = train_df['final_uo'].values
-        to_drop = cat_cols + outcome_cols
-        train_X = train_df.drop(columns=to_drop)
+        train_X = train_df.drop(columns=cols_to_drop + outcome_cols)
         clf.fit(train_X, train_y)
         file_path = os.path.dirname(os.path.abspath(__file__))
         # interpretations

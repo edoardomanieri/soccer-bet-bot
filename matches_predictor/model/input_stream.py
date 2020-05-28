@@ -146,6 +146,7 @@ class Preprocessing(base.Preprocessing):
     def execute(input_df, train_df, cat_cols):
         Preprocessing.to_numeric(input_df, cat_cols)
         Preprocessing.impute_nan(train_df, input_df)
+        Preprocessing.smooth_handling(train_df, input_df, ['campionato'])
         Preprocessing.prematch_odds_to_prob(input_df)
         input_prematch_odds = Preprocessing.pop_prematch_odds_data(input_df)
         Preprocessing.add_input_cols(input_df)

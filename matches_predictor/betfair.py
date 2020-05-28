@@ -29,7 +29,7 @@ def check_exposure(trading, balance, max_exposure):
 
 def get_soccer_df(trading, in_play_only=True):
     # Filter for just soccer
-    soccer_live_filter = filters.market_filter(text_query='Soccer', in_play_only=False)
+    soccer_live_filter = filters.market_filter(text_query='Soccer', in_play_only=in_play_only)
 
     # list events -> from event get id
     # Get a list of all thoroughbred events as objects
@@ -55,7 +55,7 @@ def get_event_id(soccer_df, prediction_obj):
     if len(event_id_df) == 0:
         event_id = 'ERR'
     else:
-        event_id = event_id_df.reset_index(drop=True)['Event ID'][0]
+        event_id = event_id_df.reset_index()['Event ID'][0]
     return event_id
 
 
@@ -144,7 +144,7 @@ def get_runners_df(trading, market_id):
         price_projection=price_filter
     )
 
-    # Grab the first market book from the returned list as we only requested one market 
+    # Grab the first market book from the returned list as we only requested one market
     market_book = market_books[0]
     runners_df = _process_runner_books(market_book.runners)
     return runners_df
@@ -227,7 +227,7 @@ def restore_dict(trading, bets_dict, bets_dict_init, balance):
         return bets_dict
 
 
-def main(in_q, max_exposure, bets_dict_init, risk_level_high, 
+def main(in_q, max_exposure, bets_dict_init, risk_level_high,
          risk_level_medium):
     bets_dict = dict(bets_dict_init)
     trading = login()

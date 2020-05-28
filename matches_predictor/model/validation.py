@@ -80,7 +80,9 @@ def _show_df(input_df):
     return final_df
 
 
-def full_CV_pipeline(df, test_mask_method, method_based, clf, cat_col, missing_cols, outcome_cols, cv=5, threshold=0.5):
+def full_CV_pipeline(df, test_mask_method, method_based, clf, cat_cols,
+                     to_drop_cols, missing_cols, outcome_cols, cv=5,
+                     threshold=0.5):
     id_partita_test, total_mask = _get_ids_for_test(df, test_mask_method, False, False)
     cv_lists = _partition(id_partita_test, cv)
     accs_thresh, accs_05 = [], []
@@ -93,12 +95,12 @@ def full_CV_pipeline(df, test_mask_method, method_based, clf, cat_col, missing_c
 
         train_df, test_df = _split_test_train(df_temp, sublist)
         print(f"length of train test: {len(test_df)}")
-        train_set.Preprocessing.execute(train_df, cat_col, missing_cols, prod=False)
+        train_set.Preprocessing.execute(train_df, cat_cols, missing_cols, prod=False)
         test_y, test_prematch_odds, test_live_odds = test_set.Preprocessing.execute(
             test_df, train_df, missing_cols)
-        test_X = test_df.drop(columns=cat_col)
+        test_X = test_df.drop(columns=to_drop_cols)
         train_set.Modeling.train_model(
-            train_df, clf, cat_col, outcome_cols, prod=False)
+            train_df, clf, to_drop_cols, outcome_cols, prod=False)
         clf = train_set.Modeling.get_dev_model()
         prediction.get_predict_proba(clf, test_X, test_df)
         predictions_df = method_based(test_df, test_prematch_odds)
@@ -116,7 +118,9 @@ def full_CV_pipeline(df, test_mask_method, method_based, clf, cat_col, missing_c
     return avg_accs_thresh, avg_accs_05
 
 
-def randomizedsearch_CV(df, test_mask_method, method_based, estimator, cat_col, missing_cols, outcome_cols, param_dist, cv=5, threshold=0.5, trials=20):
+def randomizedsearch_CV(df, test_mask_method, method_based, estimator,
+                        cat_cols, to_drop_cols, missing_cols, outcome_cols,
+                        param_dist, cv=5, threshold=0.5, trials=20):
     m = 0
     best_params = {}
     param_dict_list = []
@@ -130,8 +134,8 @@ def randomizedsearch_CV(df, test_mask_method, method_based, estimator, cat_col, 
         estimator.set_params(**param_dict)
         selected_estimator = clone(estimator)
         avg_accs_thresh, avg_accs_05 = full_CV_pipeline(
-            df, test_mask_method, method_based, selected_estimator, cat_col,
-            missing_cols, outcome_cols, cv=cv, threshold=threshold)
+            df, test_mask_method, method_based, selected_estimator, cat_cols,
+            to_drop_cols, missing_cols, outcome_cols, cv=cv, threshold=threshold)
         print(param_dict)
         print(f"Accuracy with threshold: {avg_accs_thresh}")
         print(f"Accuracy general: {avg_accs_05}")

@@ -34,6 +34,28 @@ class Preprocessing():
         return df_new
 
     @staticmethod
+    def _calc_smooth_mean(df, by, m):
+        df['total_goals'] = df['home_final_score'] + df['away_final_score']
+        # Compute the global mean
+        mean = df['total_goals'].mean()
+        # Compute the number of values and the mean of each group
+        agg = df.groupby(by)['total_goals'].agg(['count', 'mean']).reset_index()
+        agg['smooth'] = (agg['count'] * agg['mean'] + m * mean) / (agg['count'] + m)
+        d = pd.Series(agg['smooth'].values, index=agg[by]).to_dict()
+        df.drop(columns=['total_goals'], inplace=True)
+        # Replace each value by the according smoothed mean
+        return d, mean
+
+    @staticmethod
+    def smooth_handling(df_train, df_test, cat_vars, m=10):
+        for var in cat_vars:
+            replace_dict, mean = Preprocessing._calc_smooth_mean(
+                df_train, by=var, m=10)
+            df_train = df_train.replace(replace_dict)
+            df_test.loc[:, var] = np.where(df_test.loc[:, var].isin(
+                replace_dict.keys()), df_test.loc[:, var].map(replace_dict), mean).astype(float)
+
+    @staticmethod
     def prematch_odds_to_prob(df):
         tmp = (1 - ((1 / df['odd_over']) +
                     (1 / df['odd_under']))) / 2

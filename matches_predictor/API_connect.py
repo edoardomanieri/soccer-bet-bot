@@ -164,10 +164,10 @@ def stat_to_dict(response, match_dict):
     stats = resp_dict['api']['statistics']
     if len(stats) == 0:
         return False
-    value = stats['Ball Possession']['home'].replace("%", "")
-    match_dict['home_possesso_palla'] = 50 if value is None else int(value)
-    value = stats['Ball Possession']['away'].replace("%", "")
-    match_dict['away_possesso_palla'] = 50 if value is None else int(value)
+    value = stats['Ball Possession']['home']
+    match_dict['home_possesso_palla'] = 50 if value is None else int(value.replace("%", ""))
+    value = stats['Ball Possession']['away']
+    match_dict['away_possesso_palla'] = 50 if value is None else int(value.replace("%", ""))
     value = stats['Total Shots']['home']
     match_dict['home_tiri'] = 0 if value is None else int(value)
     value = stats['Total Shots']['away']
@@ -216,7 +216,7 @@ def stat_to_dict(response, match_dict):
     match_dict['home_passaggi_completati'] = 0 if value is None else int(value)
     value = stats['Passes accurate']['away']
     match_dict['away_passaggi_completati'] = 0 if value is None else int(value)
-    return True 
+    return True
 
 
 def save(df):
@@ -296,6 +296,7 @@ def live_matches_producer(out_q, minute_threshold):
             n_api_call += 3
             df = pd.DataFrame([match])
             out_q.put(df)
+            # the dataframe can be modified even after put method so I need a copy
             df_to_save = df.copy()
             save(df_to_save)
         print("pause..............\n")

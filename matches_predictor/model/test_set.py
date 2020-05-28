@@ -146,6 +146,7 @@ class Preprocessing(base.Preprocessing):
         Preprocessing.add_outcome_col(test_df)
         Preprocessing.drop_API_missing_cols(test_df, missing_cols)
         Preprocessing.impute_nan(train_df, test_df)
+        Preprocessing.smooth_handling(train_df, test_df, ['campionato'])
         Preprocessing.prematch_odds_to_prob(test_df)
         test_prematch_odds = Preprocessing.pop_prematch_odds_data(test_df)
         test_live_odds = Preprocessing.pop_live_odds_data(test_df)
