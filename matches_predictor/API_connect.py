@@ -3,6 +3,7 @@ import json
 import pandas as pd
 import numpy as np
 import time
+import random
 import os
 
 '''date', 'id_partita', 'minute', 'home', 'away', 'campionato',
@@ -48,7 +49,8 @@ def extract_values(obj, key):
 def get_basic_info():
     file_path = os.path.dirname(os.path.abspath(__file__))
     keys = json.load(open(f"{file_path}/../keys.js"))
-    url = "https://api-football-v1.p.rapidapi.com/v2/fixtures/live"
+    keys = random.choice(keys['apifootball'])
+    url = f"http://{keys['x-rapidapi-host']}/{keys['version']}fixtures/live"
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
         'x-rapidapi-key': keys['x-rapidapi-key']
@@ -80,7 +82,8 @@ def basic_info_to_dict(response):
 def get_label_dict():
     file_path = os.path.dirname(os.path.abspath(__file__))
     keys = json.load(open(f"{file_path}/../keys.js"))
-    url = f"https://api-football-v1.p.rapidapi.com/v2/odds/labels/"
+    keys = random.choice(keys['apifootball'])
+    url = f"http://{keys['x-rapidapi-host']}/{keys['version']}odds/labels/"
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
         'x-rapidapi-key': keys['x-rapidapi-key']
@@ -97,7 +100,8 @@ def get_label_dict():
 def get_prematch_odds(fixture_id, label_id):
     file_path = os.path.dirname(os.path.abspath(__file__))
     keys = json.load(open(f"{file_path}/../keys.js"))
-    url = f"https://api-football-v1.p.rapidapi.com/v2/odds/fixture/{fixture_id}/label/{label_id}"
+    keys = random.choice(keys['apifootball'])
+    url = f"http://{keys['x-rapidapi-host']}/{keys['version']}odds/fixture/{fixture_id}/label/{label_id}"
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
         'x-rapidapi-key': keys['x-rapidapi-key']
@@ -148,7 +152,8 @@ def prematch_odds_1x2_to_dict(response, match_dict):
 def get_match_statistics(fixture_id):
     file_path = os.path.dirname(os.path.abspath(__file__))
     keys = json.load(open(f"{file_path}/../keys.js"))
-    url = f"https://api-football-v1.p.rapidapi.com/v2/statistics/fixture/{fixture_id}"
+    keys = random.choice(keys['apifootball'])
+    url = f"http://{keys['x-rapidapi-host']}/{keys['version']}statistics/fixture/{fixture_id}"
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
         'x-rapidapi-key': keys['x-rapidapi-key']
@@ -242,6 +247,7 @@ def ended_matches():
     with open(f"{file_path}/../res/fixture_ids", "r") as f:
         fixture_ids = [line.replace("\n", "") for line in f.readlines()]
     keys = json.load(open(f"{file_path}/../keys.js"))
+    keys = random.choice(keys['apifootball'])
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
         'x-rapidapi-key': keys['x-rapidapi-key']
@@ -249,7 +255,7 @@ def ended_matches():
     # fixture id of finished matches
     finished = []
     for fixture_id in fixture_ids:
-        url = f"https://api-football-v1.p.rapidapi.com/v2/fixtures/id/{fixture_id}"
+        url = f"http://{keys['x-rapidapi-host']}/{keys['version']}fixtures/id/{fixture_id}"
         response = requests.request("GET", url, headers=headers)
         resp_dict = json.loads(response)
         status = resp_dict['api']['status']  # double check
