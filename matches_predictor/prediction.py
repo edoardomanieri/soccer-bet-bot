@@ -107,7 +107,7 @@ def predictions_prod_cons(in_q, out_q, prob_threshold):
     train_df = pd.read_csv(f"{file_path}/../res/dataframes/training_goals.csv", header=0, index_col=0)
     # get clf from cross validation (dev) and retrain on all the train set
     clf = train_set.Modeling.get_dev_model()
-    train_set.Modeling.train_model(train_df, clf, to_drop_cols, outcome_cols, prod=True)
+    cols_used = train_set.Modeling.train_model(train_df, clf, to_drop_cols, outcome_cols, prod=True)
     clf = train_set.Modeling.get_prod_model()
 
     while True:
@@ -116,7 +116,7 @@ def predictions_prod_cons(in_q, out_q, prob_threshold):
         input_prematch_odds = input_stream.Preprocessing.execute(input_df,
                                                                  train_df,
                                                                  cat_cols)
-        test_X = input_df.drop(columns=cat_cols)
+        test_X = input_df[cols_used]
         get_predict_proba(clf, test_X, input_df)
         predictions_df = prematch_odds_based(input_df, input_prematch_odds)
         minute = predictions_df.loc[:, 'minute'][0]

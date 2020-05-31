@@ -169,6 +169,7 @@ class Modeling(base.Modeling):
         """ Train model and save it with joblib """
         train_y = train_df['final_uo'].values
         train_X = train_df.drop(columns=cols_to_drop + outcome_cols)
+        cols_used = train_X.columns.tolist()
         clf.fit(train_X, train_y)
         file_path = os.path.dirname(os.path.abspath(__file__))
         # interpretations
@@ -186,6 +187,7 @@ class Modeling(base.Modeling):
         prod_path = "production" if prod else "development"
         path = f"{file_path}/../../res/models/{prod_path}/goals.joblib"
         joblib.dump(clf, path)
+        return cols_used
 
     @staticmethod
     def save_model(clf):

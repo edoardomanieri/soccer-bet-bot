@@ -37,6 +37,8 @@ def live_matches_producer(out_q, minute_threshold):
             out_q.put(df)
             # df_to_save = df.copy()
             # API_connect.save(df_to_save)
+        if len(matches_list) == 0:
+            print("no matches available \n")
         print("pause..............\n")
         time.sleep(301)
 
@@ -54,7 +56,7 @@ def predictions_prod_cons(in_q, out_q, prob_threshold):
     train_df = pd.read_csv(f"{file_path}/../res/dataframes/training_goals.csv", header=0, index_col=0)
     # get clf from cross validation (dev) and retrain on all the train set
     clf = train_set.Modeling.get_dev_model()
-    train_set.Modeling.train_model(train_df, clf, to_drop_cols, outcome_cols, prod=True)
+    cols_used = train_set.Modeling.train_model(train_df, clf, to_drop_cols, outcome_cols, prod=True)
     clf = train_set.Modeling.get_prod_model()
 
     while True:
@@ -63,7 +65,7 @@ def predictions_prod_cons(in_q, out_q, prob_threshold):
         input_prematch_odds = input_stream.Preprocessing.execute(input_df,
                                                                  train_df,
                                                                  cat_cols)
-        test_X = input_df.drop(columns=cat_cols)
+        test_X = input_df[cols_used]
         get_predict_proba(clf, test_X, input_df)
         predictions_df = prematch_odds_based(input_df, input_prematch_odds)
         minute = predictions_df.loc[:, 'minute'][0]
@@ -73,7 +75,9 @@ def predictions_prod_cons(in_q, out_q, prob_threshold):
         prediction = predictions_df.loc[:, 'prediction_final'][0]
         probability = predictions_df.loc[:, 'probability_final_over'][0]
         model_probability = predictions_df.loc[:, 'probability_over'][0]
-        prediction_obj = Prediction(minute, home, away, market_name, prediction, probability, model_probability)
+        prediction_obj = Prediction(minute, home, away, market_name,
+                                    prediction, probability,
+                                    model_probability)
         if prediction_obj.probability > prob_threshold:
             out_q.put(prediction_obj)
         print(f"{prediction_obj.home}-{prediction_obj.away}, \
@@ -97,7 +101,8 @@ def betfair_consumer(in_q, max_exposure, bets_dict_init, risk_level_high,
                 in_q.queue.clear()
             time.sleep(120)
             continue
-        bets_dict = betfair.restore_dict(trading, bets_dict, bets_dict_init, balance)
+        bets_dict = betfair.restore_dict(trading, bets_dict,
+                                    bets_dict_init, balance)
         prediction_obj = in_q.get()
         print("trying to bet.....\n")
         soccer_df = betfair.get_soccer_df(trading, in_play_only=True)

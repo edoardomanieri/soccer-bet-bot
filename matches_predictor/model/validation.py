@@ -98,9 +98,9 @@ def full_CV_pipeline(df, test_mask_method, method_based, clf, cat_cols,
         train_set.Preprocessing.execute(train_df, cat_cols, missing_cols, prod=False)
         test_y, test_prematch_odds, test_live_odds = test_set.Preprocessing.execute(
             test_df, train_df, missing_cols)
-        test_X = test_df.drop(columns=to_drop_cols)
-        train_set.Modeling.train_model(
+        cols_used = train_set.Modeling.train_model(
             train_df, clf, to_drop_cols, outcome_cols, prod=False)
+        test_X = test_df[cols_used]
         clf = train_set.Modeling.get_dev_model()
         prediction.get_predict_proba(clf, test_X, test_df)
         predictions_df = method_based(test_df, test_prematch_odds)
