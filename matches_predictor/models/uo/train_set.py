@@ -173,19 +173,19 @@ class Modeling(base.Modeling):
         clf.fit(train_X, train_y)
         file_path = os.path.dirname(os.path.abspath(__file__))
         # interpretations
-        if not os.path.exists(f"{file_path}/../../../res/summary_plot_shap.png"):
+        if not os.path.exists(f"{file_path}/../../../res/summary_plot_shap_uo.png"):
             explainer = shap.TreeExplainer(clf)
             shap_values = explainer.shap_values(train_X.values)
             shap.summary_plot(shap_values, train_X, show=False)
             plt.tight_layout()
-            plt.savefig(f"{file_path}/../../../res/summary_plot_shap.png")
+            plt.savefig(f"{file_path}/../../../res/summary_plot_shap_uo.png")
             plt.show()
             shap.summary_plot(shap_values, train_X, plot_type="bar", show=False)
             plt.tight_layout()
-            plt.savefig(f"{file_path}/../../../res/summary_plot_shap_bar.png")
+            plt.savefig(f"{file_path}/../../../res/summary_plot_shap_bar_uo.png")
             plt.show()
         prod_path = "production" if prod else "development"
-        path = f"{file_path}/../../../res/models/{prod_path}/goals.joblib"
+        path = f"{file_path}/../../../res/models/{prod_path}/uo.joblib"
         joblib.dump(clf, path)
         return cols_used
 
@@ -193,14 +193,14 @@ class Modeling(base.Modeling):
     def save_model(clf, accuracy):
         file_path = os.path.dirname(os.path.abspath(__file__))
         path = f"{file_path}/../../../res/models/development"
-        with open(f"{path}/goals_accuracy.txt", 'w') as f:
+        with open(f"{path}/uo_accuracy.txt", 'w') as f:
             f.write(f"{accuracy}\n")
-        joblib.dump(clf, f"{path}/goals.joblib")
+        joblib.dump(clf, f"{path}/uo.joblib")
 
     @staticmethod
     def get_prod_model():
         file_path = os.path.dirname(os.path.abspath(__file__))
-        path = f"{file_path}/../../../res/models/production/goals.joblib"
+        path = f"{file_path}/../../../res/models/production/uo.joblib"
         model = joblib.load(path)
         print(f"uploaded uo model with params: {model.get_params}")
         return model
@@ -208,7 +208,7 @@ class Modeling(base.Modeling):
     @staticmethod
     def get_dev_model():
         file_path = os.path.dirname(os.path.abspath(__file__))
-        path = f"{file_path}/../../../res/models/development/goals.joblib"
+        path = f"{file_path}/../../../res/models/development/uo.joblib"
         model = joblib.load(path)
         print(f"uploaded uo model with params: {model.get_params}")
         return model

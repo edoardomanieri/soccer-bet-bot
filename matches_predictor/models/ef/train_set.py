@@ -169,16 +169,16 @@ class Modeling(base.Modeling):
         clf.fit(train_X, train_y)
         file_path = os.path.dirname(os.path.abspath(__file__))
         # interpretations
-        if not os.path.exists(f"{file_path}/../../../res/summary_plot_shap.png"):
+        if not os.path.exists(f"{file_path}/../../../res/summary_plot_shap_ef.png"):
             explainer = shap.TreeExplainer(clf)
             shap_values = explainer.shap_values(train_X.values)
             shap.summary_plot(shap_values, train_X, show=False)
             plt.tight_layout()
-            plt.savefig(f"{file_path}/../../../res/summary_plot_shap.png")
+            plt.savefig(f"{file_path}/../../../res/summary_plot_shap_ef.png")
             plt.show()
             shap.summary_plot(shap_values, train_X, plot_type="bar", show=False)
             plt.tight_layout()
-            plt.savefig(f"{file_path}/../../../res/summary_plot_shap_bar.png")
+            plt.savefig(f"{file_path}/../../../res/summary_plot_shap_bar_ef.png")
             plt.show()
         prod_path = "production" if prod else "development"
         path = f"{file_path}/../../../res/models/{prod_path}/ef.joblib"

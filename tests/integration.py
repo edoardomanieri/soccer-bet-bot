@@ -53,7 +53,7 @@ def predictions_prod_cons_uo(in_q, out_q, prob_threshold):
                         'home_attacchi_pericolosi', 'away_attacchi_pericolosi']
     train_df = uo.train_set.Retrieving.starting_df(cat_cols, api_missing_cols)
     uo.train_set.Preprocessing.execute(train_df, cat_cols, api_missing_cols)
-    train_df = pd.read_csv(f"{file_path}/../res/dataframes/training_goals.csv", header=0, index_col=0)
+    train_df = pd.read_csv(f"{file_path}/../res/dataframes/training_uo.csv", header=0, index_col=0)
     # get clf from cross validation (dev) and retrain on all the train set
     clf = uo.train_set.Modeling.get_dev_model()
     cols_used = uo.train_set.Modeling.train_model(train_df, clf, to_drop_cols, outcome_cols, prod=True)

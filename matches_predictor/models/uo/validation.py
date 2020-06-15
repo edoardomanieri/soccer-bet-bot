@@ -152,7 +152,7 @@ def save_model(best_estimator, acc, force_saving):
     # check if model accuracy is better than previous and if it is the case save it
     file_path = os.path.dirname(os.path.abspath(__file__))
     path = f"{file_path}/../../../res/models/development"
-    with open(f"{path}/goals_accuracy.txt", 'r') as f:
+    with open(f"{path}/uo_accuracy.txt", 'r') as f:
         previous_acc = float(f.readline())
     if force_saving or acc > previous_acc:
         print("saving new model...\n")
