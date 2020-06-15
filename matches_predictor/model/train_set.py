@@ -190,19 +190,25 @@ class Modeling(base.Modeling):
         return cols_used
 
     @staticmethod
-    def save_model(clf):
+    def save_model(clf, accuracy):
         file_path = os.path.dirname(os.path.abspath(__file__))
-        path = f"{file_path}/../../res/models/development/goals.joblib"
-        joblib.dump(clf, path)
+        path = f"{file_path}/../../res/models/development"
+        with open(f"{path}/goals_accuracy.txt", 'w') as f:
+            f.write(f"{accuracy}\n")
+        joblib.dump(clf, f"{path}/goals.joblib")
 
     @staticmethod
     def get_prod_model():
         file_path = os.path.dirname(os.path.abspath(__file__))
         path = f"{file_path}/../../res/models/production/goals.joblib"
-        return joblib.load(path)
+        model = joblib.load(path)
+        print(f"uploaded model with params: {model.params_}")
+        return model
 
     @staticmethod
     def get_dev_model():
         file_path = os.path.dirname(os.path.abspath(__file__))
         path = f"{file_path}/../../res/models/development/goals.joblib"
-        return joblib.load(path)
+        model = joblib.load(path)
+        print(f"uploaded model with params: {model.get_params}")
+        return model

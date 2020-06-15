@@ -4,6 +4,7 @@ from matches_predictor import prediction
 import random
 import itertools
 from sklearn.base import clone
+import os
 
 
 def _get_ids_for_test(df, test_mask_method, prematch_odds=True, live_odds=True):
@@ -120,7 +121,8 @@ def full_CV_pipeline(df, test_mask_method, method_based, clf, cat_cols,
 
 def randomizedsearch_CV(df, test_mask_method, method_based, estimator,
                         cat_cols, to_drop_cols, missing_cols, outcome_cols,
-                        param_dist, cv=5, threshold=0.5, trials=20):
+                        param_dist, force_saving=False, cv=5, threshold=0.5, 
+                        trials=20):
     m = 0
     best_params = {}
     param_dict_list = []
@@ -143,5 +145,18 @@ def randomizedsearch_CV(df, test_mask_method, method_based, estimator,
             m = avg_accs_thresh
             best_params = param_dict
             best_estimator = clone(selected_estimator)
-    train_set.Modeling.save_model(best_estimator)
+    save_model(best_estimator, m, force_saving)
     return m, best_params
+
+
+def save_model(best_estimator, acc, force_saving):
+    # check if model accuracy is better than previous and if it is the case save it
+    file_path = os.path.dirname(os.path.abspath(__file__))
+    path = f"{file_path}/../../res/models/development"
+    with open(f"{path}/goals_accuracy.txt", 'r') as f:
+        previous_acc = float(f.readline())
+    if force_saving or acc > previous_acc:
+        print("saving new model...\n")
+        train_set.Modeling.save_model(best_estimator, acc)
+    else:
+        print("model not saved...\n")

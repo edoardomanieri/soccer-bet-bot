@@ -38,12 +38,13 @@ if __name__ == "__main__":
     if do_mask_all:
         best_acc, best_params = validation.randomizedsearch_CV(
             df, mask_all, prediction.model_based, clf, cat_cols, to_drop,
-            api_missing_cols, outcome_cols, params,
+            api_missing_cols, outcome_cols, params, force_saving=False,
             cv=5, trials=1, threshold=prob_threshold)
         print(f"Best threshold {prob_threshold} accuracy without mask: {best_acc}")
 
     best_acc, best_params = validation.randomizedsearch_CV(
-        df, mask_minute3070_1goal, prediction.prematch_odds_based, clf, cat_cols, to_drop,
-        api_missing_cols, outcome_cols, params,
-        cv=5, trials=5, threshold=prob_threshold)
+        df, mask_minute3070_1goal, prediction.prematch_odds_based,
+        clf, cat_cols, to_drop, api_missing_cols,
+        outcome_cols, params, force_saving=False, cv=5, trials=5,
+        threshold=prob_threshold)
     print(f"Best threshold {prob_threshold} accuracy 1 goal and 30-70 minute mask: {best_acc}")
