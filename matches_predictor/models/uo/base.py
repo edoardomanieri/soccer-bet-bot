@@ -98,7 +98,7 @@ class Preprocessing():
     def save(df):
         file_path = os.path.dirname(os.path.abspath(__file__))
         df.reset_index(drop=True).to_csv(
-            f"{file_path}/../../res/dataframes/training_goals.csv")
+            f"{file_path}/../../../res/dataframes/training_goals.csv")
 
 
 class Modeling():

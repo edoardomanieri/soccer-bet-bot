@@ -1,4 +1,4 @@
-from matches_predictor.model import base
+from matches_predictor.models.ef import base
 import numpy as np
 import pandas as pd
 import os
@@ -32,11 +32,11 @@ class Retrieving(base.Retrieving):
     def starting_df(cat_cols, api_missing_cols):
         file_path = os.path.dirname(os.path.abspath(__file__))
         # import dataset
-        df_API = pd.read_csv(f"{file_path}/../../res/df_api.csv", index_col=0, header=0)
+        df_API = pd.read_csv(f"{file_path}/../../../res/df_api.csv", index_col=0, header=0)
         # put on the API df all nans (will be dropped later on)
         for col in api_missing_cols:
             df_API[col] = np.nan
-        df_scraping = pd.read_csv(f"{file_path}/../../res/df_scraping.csv", index_col=0, header=0)
+        df_scraping = pd.read_csv(f"{file_path}/../../../res/df_scraping.csv", index_col=0, header=0)
         df = pd.concat([df_API, df_scraping], axis=0, ignore_index=True)
         # change data type
         for col in df.columns:
@@ -104,10 +104,6 @@ class Preprocessing(base.Preprocessing):
                           'minute', 'away_final_score', 'id_partita']
         df.dropna(axis=0, subset=important_cols, how='any', inplace=True)
 
-        # drop matches already in over
-        over_mask = (df['home_score'] + df['away_score']) >= 3
-        df.drop(df[over_mask].index, inplace=True)
-
     @staticmethod
     def add_prematch_vars(df):
         df['avg_camp_goals'] = 0
@@ -155,8 +151,8 @@ class Preprocessing(base.Preprocessing):
         Preprocessing.drop_odds_cols(train_df)
         Preprocessing.drop_nan(train_df)
         Preprocessing.impute_nan(train_df)
-        Preprocessing.smooth_handling(train_df, train_df, ['campionato'])
         Preprocessing.add_outcome_col(train_df)
+        Preprocessing.smooth_handling(train_df, train_df, ['campionato'])
         Preprocessing.add_input_cols(train_df)
         if prod:
             Preprocessing.save(train_df)
@@ -167,48 +163,48 @@ class Modeling(base.Modeling):
     @staticmethod
     def train_model(train_df, clf, cols_to_drop, outcome_cols, prod=True):
         """ Train model and save it with joblib """
-        train_y = train_df['final_uo'].values
+        train_y = train_df['final_ef'].values
         train_X = train_df.drop(columns=cols_to_drop + outcome_cols)
         cols_used = train_X.columns.tolist()
         clf.fit(train_X, train_y)
         file_path = os.path.dirname(os.path.abspath(__file__))
         # interpretations
-        if not os.path.exists(f"{file_path}/../../res/summary_plot_shap.png"):
+        if not os.path.exists(f"{file_path}/../../../res/summary_plot_shap.png"):
             explainer = shap.TreeExplainer(clf)
             shap_values = explainer.shap_values(train_X.values)
             shap.summary_plot(shap_values, train_X, show=False)
             plt.tight_layout()
-            plt.savefig(f"{file_path}/../../res/summary_plot_shap.png")
+            plt.savefig(f"{file_path}/../../../res/summary_plot_shap.png")
             plt.show()
             shap.summary_plot(shap_values, train_X, plot_type="bar", show=False)
             plt.tight_layout()
-            plt.savefig(f"{file_path}/../../res/summary_plot_shap_bar.png")
+            plt.savefig(f"{file_path}/../../../res/summary_plot_shap_bar.png")
             plt.show()
         prod_path = "production" if prod else "development"
-        path = f"{file_path}/../../res/models/{prod_path}/goals.joblib"
+        path = f"{file_path}/../../../res/models/{prod_path}/ef.joblib"
         joblib.dump(clf, path)
         return cols_used
 
     @staticmethod
     def save_model(clf, accuracy):
         file_path = os.path.dirname(os.path.abspath(__file__))
-        path = f"{file_path}/../../res/models/development"
-        with open(f"{path}/goals_accuracy.txt", 'w') as f:
+        path = f"{file_path}/../../../res/models/development"
+        with open(f"{path}/ef_accuracy.txt", 'w') as f:
             f.write(f"{accuracy}\n")
-        joblib.dump(clf, f"{path}/goals.joblib")
+        joblib.dump(clf, f"{path}/ef.joblib")
 
     @staticmethod
     def get_prod_model():
         file_path = os.path.dirname(os.path.abspath(__file__))
-        path = f"{file_path}/../../res/models/production/goals.joblib"
+        path = f"{file_path}/../../../res/models/production/ef.joblib"
         model = joblib.load(path)
-        print(f"uploaded model with params: {model.params_}")
+        print(f"uploaded ef model with params: {model.get_params}")
         return model
 
     @staticmethod
     def get_dev_model():
         file_path = os.path.dirname(os.path.abspath(__file__))
-        path = f"{file_path}/../../res/models/development/goals.joblib"
+        path = f"{file_path}/../../../res/models/development/ef.joblib"
         model = joblib.load(path)
-        print(f"uploaded model with params: {model.get_params}")
+        print(f"uploaded ef model with params: {model.get_params}")
         return model

@@ -1,5 +1,4 @@
-from matches_predictor.model import test_set, validation
-from matches_predictor import prediction
+from matches_predictor.models.uo import test_set, validation, prediction
 from xgboost import XGBClassifier
 
 if __name__ == "__main__":

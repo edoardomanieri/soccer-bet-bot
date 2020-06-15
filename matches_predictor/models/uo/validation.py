@@ -1,6 +1,5 @@
 from sklearn.metrics import accuracy_score
-from matches_predictor.model import test_set, train_set
-from matches_predictor import prediction
+from matches_predictor.models.uo import test_set, train_set, prediction
 import random
 import itertools
 from sklearn.base import clone
@@ -152,7 +151,7 @@ def randomizedsearch_CV(df, test_mask_method, method_based, estimator,
 def save_model(best_estimator, acc, force_saving):
     # check if model accuracy is better than previous and if it is the case save it
     file_path = os.path.dirname(os.path.abspath(__file__))
-    path = f"{file_path}/../../res/models/development"
+    path = f"{file_path}/../../../res/models/development"
     with open(f"{path}/goals_accuracy.txt", 'r') as f:
         previous_acc = float(f.readline())
     if force_saving or acc > previous_acc:

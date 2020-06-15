@@ -1,5 +1,5 @@
 import numpy as np
-from matches_predictor.model import base
+from matches_predictor.models.ef import base
 import pandas as pd
 import os
 
@@ -29,13 +29,12 @@ class Retrieving(base.Retrieving):
     def starting_df(cat_cols, api_missing_cols):
         file_path = os.path.dirname(os.path.abspath(__file__))
         # import dataset
-        df_temp = pd.read_csv(f"{file_path}/../res/temp.csv", index_col=0, header=0)
+        df_temp = pd.read_csv(f"{file_path}/../../res/temp.csv", index_col=0, header=0)
         # change data type
         for col in df_temp.columns:
             if col not in cat_cols:
                 df_temp[col] = pd.to_numeric(df_temp[col])
         return df_temp.reset_index(drop=True)
-
 
 
 class Preprocessing(base.Preprocessing):
@@ -57,10 +56,6 @@ class Preprocessing(base.Preprocessing):
         important_cols = ['id_partita', 'minute']
         df.dropna(axis=0, subset=important_cols, how='any', inplace=True)
 
-        # drop matches already in over
-        over_mask = (df['home_score'] + df['away_score']) >= 3
-        ids = df.loc[over_mask, 'id_partita'].unique()
-        df.drop(df[df['id_partita'].isin(ids)].index, inplace=True)
 
     @staticmethod
     def impute_nan(train_df, test_df):

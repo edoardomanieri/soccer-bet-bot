@@ -1,5 +1,5 @@
 import numpy as np
-from matches_predictor.model import base
+from matches_predictor.models.ef import base
 import pandas as pd
 import os
 
@@ -10,11 +10,11 @@ class Retrieving(base.Retrieving):
     def starting_df(cat_cols, api_missing_cols):
         file_path = os.path.dirname(os.path.abspath(__file__))
         # import dataset
-        df_API = pd.read_csv(f"{file_path}/../../res/df_api.csv", index_col=0, header=0)
+        df_API = pd.read_csv(f"{file_path}/../../../res/df_api.csv", index_col=0, header=0)
         # put on the API df all nans (will be dropped later on)
         for col in api_missing_cols:
             df_API[col] = np.nan
-        df_scraping = pd.read_csv(f"{file_path}/../../res/df_scraping.csv", index_col=0, header=0)
+        df_scraping = pd.read_csv(f"{file_path}/../../../res/df_scraping.csv", index_col=0, header=0)
         df = pd.concat([df_API, df_scraping], axis=0, ignore_index=True)
         # change data type
         for col in df.columns:
@@ -43,10 +43,6 @@ class Preprocessing(base.Preprocessing):
                           'home_final_score', 'away_final_score']
         df.dropna(axis=0, subset=important_cols, how='any', inplace=True)
 
-        # drop matches already in over
-        over_mask = (df['home_score'] + df['away_score']) >= 3
-        ids = df.loc[over_mask, 'id_partita'].unique()
-        df.drop(df[df['id_partita'].isin(ids)].index, inplace=True)
 
     @staticmethod
     def add_prematch_vars(training_df, test_df):
@@ -138,7 +134,7 @@ class Preprocessing(base.Preprocessing):
     @staticmethod
     def drop_outcome_cols(df):
         df.drop(columns=['home_final_score',
-                         'away_final_score', 'final_uo'], inplace=True)
+                         'away_final_score', 'final_ef'], inplace=True)
 
     @staticmethod
     def execute(test_df, train_df, missing_cols):
@@ -151,8 +147,8 @@ class Preprocessing(base.Preprocessing):
         test_prematch_odds = Preprocessing.pop_prematch_odds_data(test_df)
         test_live_odds = Preprocessing.pop_live_odds_data(test_df)
         Preprocessing.add_input_cols(test_df)
-        test_y = test_df.loc[:, ['id_partita', 'minute', 'final_uo']]
+        test_y = test_df.loc[:, ['id_partita', 'minute', 'final_ef']]
         Preprocessing.drop_outcome_cols(test_df)
         test_y = test_y.merge(test_df, on=['id_partita', 'minute']).loc[:, [
-            'id_partita', 'minute', 'final_uo']].copy()
+            'id_partita', 'minute', 'final_ef']].copy()
         return test_y, test_prematch_odds, test_live_odds
