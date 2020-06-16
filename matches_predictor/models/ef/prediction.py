@@ -18,7 +18,7 @@ class Prediction():
 
 def build_output_df(input_df):
     final_df = input_df.loc[:, ['id_partita', 'home', 'away', 'minute', 'home_score',
-                                'away_score', 'predictions', 'probability']]\
+                                'away_score', 'prediction', 'probability']]\
         .sort_values(by='minute', ascending=False)\
         .groupby(['id_partita']).first().reset_index()
     return final_df
@@ -62,9 +62,9 @@ def model_based(input_pred_df, input_prematch_odds_df):
 
 
 def get_predict_proba(clf, test_X, df):
-    predictions = clf.predict(test_X)
+    prediction = clf.predict(test_X)
     probabilities = clf.predict_proba(test_X)
-    df['predictions'] = predictions
+    df['prediction'] = prediction
     df['probability_1'] = probabilities[:, 0]
     df['probability_X'] = probabilities[:, 1]
     df['probability_2'] = probabilities[:, 2]

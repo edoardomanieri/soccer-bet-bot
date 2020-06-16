@@ -3,6 +3,7 @@ from matches_predictor import betfair
 from matches_predictor.models import uo, ef
 import pandas as pd
 import os
+import glob
 import time
 from queue import Queue
 from threading import Thread
@@ -62,12 +63,12 @@ def predictions_prod_cons_uo(in_q, out_q, prob_threshold):
     while True:
         input_df = pd.DataFrame(in_q.get())
         input_df.drop(columns=['fixture_id'], inplace=True)
-        input_prematch_odds = uo.input_stream.Preprocessing.execute(input_df,
-                                                                    train_df,
-                                                                    cat_cols)
-        test_X = input_df[cols_used]
-        uo.prediction.get_predict_proba(clf, test_X, input_df)
-        predictions_df = uo.prediction.prematch_odds_based(input_df, input_prematch_odds)
+        prematch_odds = uo.input_stream.Preprocessing.execute(input_df,
+                                                              train_df,
+                                                              cat_cols)
+        input_X = input_df[cols_used]
+        uo.prediction.get_predict_proba(clf, input_X, input_df)
+        predictions_df = uo.prediction.prematch_odds_based(input_df, prematch_odds)
         minute = predictions_df.loc[:, 'minute'][0]
         home = predictions_df.loc[:, 'home'][0]
         away = predictions_df.loc[:, 'away'][0]
@@ -78,6 +79,9 @@ def predictions_prod_cons_uo(in_q, out_q, prob_threshold):
         prediction_obj = uo.prediction.Prediction(minute, home, away, market_name,
                                                   prediction, probability,
                                                   model_probability)
+        output_df = predictions_df[['minute', 'home', 'away', 'prediction_final', 'probability_final', 'probability']]
+        output_df['bet_type'] = 'uo'
+        output_df.to_csv(f"{file_path}/../dash/uo{minute}{home}.csv")
         if prediction_obj.probability > prob_threshold:
             out_q.put(prediction_obj)
         print(f"{prediction_obj.home}-{prediction_obj.away}, \
@@ -94,7 +98,7 @@ def predictions_prod_cons_ef(in_q, out_q, prob_threshold):
     outcome_cols = ['home_final_score', 'away_final_score', 'final_ef']
     api_missing_cols = ['home_punizioni', 'away_punizioni', 'home_rimesse_laterali',
                         'away_rimesse_laterali', 'home_contrasti', 'away_contrasti',
-                        'home_attacchi', 'away_attacchi','home_attacchi_pericolosi',
+                        'home_attacchi', 'away_attacchi', 'home_attacchi_pericolosi',
                         'away_attacchi_pericolosi']
     train_df = ef.train_set.Retrieving.starting_df(cat_cols, api_missing_cols)
     ef.train_set.Preprocessing.execute(train_df, cat_cols, api_missing_cols)
@@ -107,12 +111,12 @@ def predictions_prod_cons_ef(in_q, out_q, prob_threshold):
     while True:
         input_df = pd.DataFrame(in_q.get())
         input_df.drop(columns=['fixture_id'], inplace=True)
-        input_prematch_odds = ef.input_stream.Preprocessing.execute(input_df,
+        prematch_odds = ef.input_stream.Preprocessing.execute(input_df,
                                                                     train_df,
                                                                     cat_cols)
-        test_X = input_df[cols_used]
-        ef.prediction.get_predict_proba(clf, test_X, input_df)
-        predictions_df = ef.prediction.prematch_odds_based(input_df, input_prematch_odds)
+        input_X = input_df[cols_used]
+        ef.prediction.get_predict_proba(clf, input_X, input_df)
+        predictions_df = ef.prediction.prematch_odds_based(input_df, prematch_odds)
         minute = predictions_df.loc[:, 'minute'][0]
         home = predictions_df.loc[:, 'home'][0]
         away = predictions_df.loc[:, 'away'][0]
@@ -121,6 +125,9 @@ def predictions_prod_cons_ef(in_q, out_q, prob_threshold):
         probability = predictions_df.loc[:, 'probability_final'][0]
         model_probability = predictions_df.loc[:, 'probability'][0]
         prediction_obj = ef.prediction.Prediction(minute, home, away, market_name, prediction, probability, model_probability)
+        output_df = predictions_df[['minute', 'home', 'away', 'prediction_final', 'probability_final', 'probability']]
+        output_df['bet_type'] = 'ef'
+        output_df.to_csv(f"{file_path}/../dash/ef{minute}{home}.csv")
         if prediction_obj.probability > prob_threshold:
             out_q.put(prediction_obj)
         print(f"{prediction_obj.home}-{prediction_obj.away}, \
@@ -170,6 +177,7 @@ def betfair_consumer(in_q, max_exposure, bets_dict_init, risk_level_high,
 
 if __name__ == "__main__":
     # Create the shared queue and launch both threads
+    file_path = os.path.dirname(os.path.abspath(__file__))
     q1 = Queue()
     q2 = Queue()
     q3 = Queue()
@@ -181,6 +189,10 @@ if __name__ == "__main__":
     risk_level_medium = 1.2
     max_exposure = 14
     try:
+        # remove previous files
+        files = glob.glob(f"{file_path}/../dash/*")
+        for f in files:
+            os.remove(f)
         live_matches_thread = Thread(target=live_matches_producer, args=(q1, q2, minute_threshold, ))
         predictions_uo_thread = Thread(target=predictions_prod_cons_uo, args=(q1, q3, probability_threshold, ))
         predictions_ef_thread = Thread(target=predictions_prod_cons_ef, args=(q2, q3, probability_threshold, ))
