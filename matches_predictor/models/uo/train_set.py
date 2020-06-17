@@ -202,7 +202,7 @@ class Modeling(base.Modeling):
         file_path = os.path.dirname(os.path.abspath(__file__))
         path = f"{file_path}/../../../res/models/production/uo.joblib"
         model = joblib.load(path)
-        print(f"uploaded uo model with params: {model.get_params}")
+        # print(f"uploaded uo model with params: {model.get_params}")
         return model
 
     @staticmethod
@@ -210,5 +210,5 @@ class Modeling(base.Modeling):
         file_path = os.path.dirname(os.path.abspath(__file__))
         path = f"{file_path}/../../../res/models/development/uo.joblib"
         model = joblib.load(path)
-        print(f"uploaded uo model with params: {model.get_params}")
+        # print(f"uploaded uo model with params: {model.get_params}")
         return model

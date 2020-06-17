@@ -34,14 +34,18 @@ def updateTable(n_clicks):
     file_path = os.path.dirname(os.path.abspath(__file__))
     files = glob.glob(f"{file_path}/../dash/*")
     li = [pd.read_csv(filename, index_col=None, header=0) for filename in files]
-    df = pd.concat(li, axis=0, ignore_index=True)
-    df = df.sort_values(by=['minute'], ascending=False)
-    df = df.groupby(['bet_type', 'home']).first()
-    columns = [{"name": i, "id": i} for i in df.columns]
-    data_ob = df.to_dict('rows')
-    if n_clicks is None:
+    if len(li) > 0:
+        df = pd.concat(li, axis=0, ignore_index=True)
+        df = df.sort_values(by=['minute'], ascending=False)
+        df = df.groupby(['bet_type', 'home']).first().reset_index()
+        df = df.sort_values(by=['probability_final'], ascending=False)
+        df.drop(columns=['bet_type', 'Unnamed: 0'], inplace=True)
+        columns = [{"name": i, "id": i} for i in df.columns]
+        data_ob = df.to_dict('rows')
+        if n_clicks is None:
+            return data_ob, columns
         return data_ob, columns
-    return data_ob, columns
+    return [], []
 
 
 if __name__ == '__main__':

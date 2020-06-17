@@ -198,7 +198,7 @@ class Modeling(base.Modeling):
         file_path = os.path.dirname(os.path.abspath(__file__))
         path = f"{file_path}/../../../res/models/production/ef.joblib"
         model = joblib.load(path)
-        print(f"uploaded ef model with params: {model.get_params}")
+        # print(f"uploaded ef model with params: {model.get_params}")
         return model
 
     @staticmethod
@@ -206,5 +206,5 @@ class Modeling(base.Modeling):
         file_path = os.path.dirname(os.path.abspath(__file__))
         path = f"{file_path}/../../../res/models/development/ef.joblib"
         model = joblib.load(path)
-        print(f"uploaded ef model with params: {model.get_params}")
+        # print(f"uploaded ef model with params: {model.get_params}")
         return model

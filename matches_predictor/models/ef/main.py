@@ -29,8 +29,8 @@ if __name__ == "__main__":
                         'away_attacchi_pericolosi']
     params = {
         'learning_rate': [0.05, 0.1, 0.15, 0.20, 0.3],
-        'n_estimators': [200, 300, 500, 700],
-        'min_child_weight': [3, 5, 10, 15],
+        'n_estimators': [200, 300, 500, 700, 1000, 1200],
+        'min_child_weight': [3, 5, 10, 13, 15],
         'gamma': [0.3, 0.5, 0.7, 1, 1.5],
         'subsample': [0.4, 0.6, 0.8, 1.0],
         'colsample_bytree': [0.4, 0.6, 0.8, 1.0],

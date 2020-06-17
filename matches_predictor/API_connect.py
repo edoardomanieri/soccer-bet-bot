@@ -112,7 +112,7 @@ def get_prematch_odds(fixture_id, label_id):
 
 def prematch_odds_uo_to_dict(response, match_dict):
     resp_dict = json.loads(response)
-    if 'api' in resp_dict.keys():
+    if 'api' in resp_dict.keys() and 'odds' in resp_dict['api'].keys():
         bets = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values']
         for bet in bets:
             if bet['value'] == 'Over 2.5':
@@ -121,15 +121,17 @@ def prematch_odds_uo_to_dict(response, match_dict):
                 match_dict['odd_under'] = float(bet['odd'])
     if 'odd_over' not in match_dict.keys():
         print("Over 2.5 odd not found \n")
-        match_dict['odd_over'] = np.nan
+        # 0 is nan value for odds
+        match_dict['odd_over'] = 0
     if 'odd_under' not in match_dict.keys():
         print("Under 2.5 odd not found \n")
-        match_dict['odd_under'] = np.nan
+        # 0 is nan value for odds
+        match_dict['odd_under'] = 0
 
 
 def prematch_odds_1x2_to_dict(response, match_dict):
     resp_dict = json.loads(response)
-    if 'api' in resp_dict.keys():
+    if 'api' in resp_dict.keys() and 'odds' in resp_dict['api'].keys():
         bets = resp_dict['api']['odds'][0]['bookmakers'][0]['bets'][0]['values']
         for bet in bets:
             if bet['value'] == 'Home':
@@ -140,13 +142,16 @@ def prematch_odds_1x2_to_dict(response, match_dict):
                 match_dict['odd_2'] = float(bet['odd'])
     if 'odd_1' not in match_dict.keys():
         print("1 odd not found \n")
-        match_dict['odd_1'] = np.nan
+        # 0 is nan value for odds
+        match_dict['odd_1'] = 0
     if 'odd_X' not in match_dict.keys():
         print("X odd not found \n")
-        match_dict['odd_X'] = np.nan
+        # 0 is nan value for odds
+        match_dict['odd_X'] = 0
     if 'odd_2' not in match_dict.keys():
         print("2 odd not found \n")
-        match_dict['odd_2'] = np.nan
+        # 0 is nan value for odds
+        match_dict['odd_2'] = 0
 
 
 def get_match_statistics(fixture_id):
