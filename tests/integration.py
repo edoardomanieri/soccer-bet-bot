@@ -70,16 +70,7 @@ def predictions_prod_cons_uo(in_q, out_q, prob_threshold):
         input_X = input_df[cols_used]
         uo.prediction.get_predict_proba(clf, input_X, input_df)
         predictions_df = uo.prediction.prematch_odds_based(input_df, prematch_odds)
-        minute = predictions_df.loc[:, 'minute'][0]
-        home = predictions_df.loc[:, 'home'][0]
-        away = predictions_df.loc[:, 'away'][0]
-        market_name = 'Over/Under 2.5 Goals'
-        prediction = predictions_df.loc[:, 'prediction_final'][0]
-        probability = predictions_df.loc[:, 'probability_final_over'][0]
-        model_probability = predictions_df.loc[:, 'probability_over'][0]
-        prediction_obj = uo.prediction.Prediction(minute, home, away, market_name,
-                                                  prediction, probability,
-                                                  model_probability)
+        prediction_obj = uo.prediction.Prediction(predictions_df)
         output_df = predictions_df.loc[:, ['minute', 'home', 'away', 'prediction_final']]
         output_df['probability_final'] = np.where(predictions_df['probability_final_over'] > 0.5,
                                                   predictions_df['probability_final_over'],
@@ -88,7 +79,7 @@ def predictions_prod_cons_uo(in_q, out_q, prob_threshold):
                                             predictions_df['probability_over'],
                                             1 - predictions_df['probability_over'])
         output_df['bet_type'] = 'uo'
-        output_df.to_csv(f"{file_path}/../dash/uo{minute}{home}.csv")
+        output_df.to_csv(f"{file_path}/../dash/uo{prediction_obj.minute}{prediction_obj.home}.csv")
         if prediction_obj.probability > prob_threshold:
             out_q.put(prediction_obj)
         print(f"{prediction_obj.home}-{prediction_obj.away}, \
@@ -124,17 +115,12 @@ def predictions_prod_cons_ef(in_q, out_q, prob_threshold):
         input_X = input_df[cols_used]
         ef.prediction.get_predict_proba(clf, input_X, input_df)
         predictions_df = ef.prediction.prematch_odds_based(input_df, prematch_odds)
-        minute = predictions_df.loc[:, 'minute'][0]
-        home = predictions_df.loc[:, 'home'][0]
-        away = predictions_df.loc[:, 'away'][0]
-        market_name = 'da modificare'
-        prediction = predictions_df.loc[:, 'prediction_final'][0]
-        probability = predictions_df.loc[:, 'probability_final'][0]
-        model_probability = predictions_df.loc[:, 'probability'][0]
-        prediction_obj = ef.prediction.Prediction(minute, home, away, market_name, prediction, probability, model_probability)
-        output_df = predictions_df.loc[:, ['minute', 'home', 'away', 'prediction_final', 'probability_final', 'probability']]
+        prediction_obj = ef.prediction.Prediction(predictions_df)
+        output_df = predictions_df.loc[:, ['minute', 'home', 'away',
+                                           'prediction_final', 'probability_final',
+                                           'probability']]
         output_df['bet_type'] = 'ef'
-        output_df.to_csv(f"{file_path}/../dash/ef{minute}{home}.csv")
+        output_df.to_csv(f"{file_path}/../dash/ef{prediction_obj.minute}{prediction_obj.home}.csv")
         if prediction_obj.probability > prob_threshold:
             out_q.put(prediction_obj)
         print(f"{prediction_obj.home}-{prediction_obj.away}, \

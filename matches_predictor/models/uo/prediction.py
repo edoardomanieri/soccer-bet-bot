@@ -6,14 +6,23 @@ import os
 
 class Prediction():
 
-    def __init__(self, minute, home, away, market_name, prediction, probability, model_probability):
-        self.minute = minute
-        self.home = home
-        self.away = away
-        self.market_name = market_name
-        self.prediction = prediction
-        self.probability = probability if probability > 0.5 else 1 - probability
-        self.model_probability = model_probability if model_probability > 0.5 else 1 - model_probability
+    # def __init__(self, minute, home, away, market_name, prediction, probability, model_probability):
+    #     self.minute = minute
+    #     self.home = home
+    #     self.away = away
+    #     self.market_name = market_name
+    #     self.prediction = prediction
+    #     self.probability = probability if probability > 0.5 else 1 - probability
+    #     self.model_probability = model_probability if model_probability > 0.5 else 1 - model_probability
+
+    def __init__(self, predictions_df):
+        self.minute = predictions_df.loc[:, 'minute'][0]
+        self.home = predictions_df.loc[:, 'home'][0]
+        self.away = predictions_df.loc[:, 'away'][0]
+        self.market_name = 'Over/Under 2.5 Goals'
+        self.prediction = predictions_df.loc[:, 'prediction_final'][0]
+        self.probability = predictions_df.loc[:, 'probability_final_over'][0] if predictions_df.loc[:, 'probability_final_over'][0] > 0.5 else 1 - predictions_df.loc[:, 'probability_final_over'][0]
+        self.model_probability = predictions_df.loc[:, 'probability_over'][0] if predictions_df.loc[:, 'probability_over'][0] > 0.5 else 1 - predictions_df.loc[:, 'probability_over'][0]
 
 
 def build_output_df(input_df):
