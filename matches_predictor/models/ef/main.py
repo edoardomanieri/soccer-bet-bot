@@ -51,6 +51,6 @@ if __name__ == "__main__":
     best_acc, best_params = validation.randomizedsearch_CV(
         df, mask_minute3060, prediction.prematch_odds_based,
         clf, cat_cols, to_drop, api_missing_cols,
-        outcome_cols, params, force_saving=False, cv=5, trials=5,
+        outcome_cols, params, force_saving=False, cv=5, trials=10,
         threshold=prob_threshold)
     print(f"Best threshold {prob_threshold} accuracy 1 goal and 30-70 minute mask: {best_acc}")

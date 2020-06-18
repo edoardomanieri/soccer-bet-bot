@@ -130,12 +130,18 @@ def predictions_prod_cons_ef(in_q, out_q, prob_threshold):
               eventual prediction: {prediction_obj.prediction}\n")
 
 
-def betfair_consumer(in_q, max_exposure, bets_dict_init, risk_level_high,
-                     risk_level_medium):
+
+def main(in_q, max_exposure, bets_dict_init, risk_level_high):
+    runner_name_dict = {
+        'under': 'Under 2.5 Goals',
+        'over': 'Over 2.5 Goals',
+        'X': 'The Draw'
+    }
     bets_dict = dict(bets_dict_init)
     trading = betfair.login()
     balance = trading.account.get_account_funds().available_to_bet_balance
     number_bets = sum(bets_dict.values())
+    # divide total exposure on number of bets
     bet_size = max_exposure / number_bets
     while True:
         if not betfair.check_exposure(trading, balance, max_exposure):
@@ -144,29 +150,31 @@ def betfair_consumer(in_q, max_exposure, bets_dict_init, risk_level_high,
                 in_q.queue.clear()
             time.sleep(120)
             continue
-        bets_dict = betfair.restore_dict(trading, bets_dict,
-                                         bets_dict_init, balance)
+        bets_dict = betfair.restore_dict(trading, bets_dict, bets_dict_init, balance)
         prediction_obj = in_q.get()
-        print("trying to bet.....\n")
         soccer_df = betfair.get_soccer_df(trading, in_play_only=True)
-        event_id = betfair.get_event_id(soccer_df, prediction_obj)
+        event_id = betfair.get_event_id(soccer_df, runner_name_dict, prediction_obj)
         if event_id == 'ERR':
             print('not event id')
             continue
-        market_id = betfair.get_market_id(trading, event_id, prediction_obj)
-        if market_id == 'ERR':
+        selection_df = betfair.get_selection_df(trading, event_id, prediction_obj)
+        if selection_df is None:
             print('not market id')
             continue
+        market_id = selection_df.reset_index()['Market ID'][0]
         runners_df = betfair.get_runners_df(trading, market_id)
-        execute_bet, selection_id, odd, size = betfair.bet_algo(bet_size, bets_dict,
-                                                                risk_level_high, risk_level_medium,
-                                                                runners_df, prediction_obj)
+        execute_bet, selection_id, odd, size, side = betfair.bet_algo(bet_size, bets_dict,
+                                                                      runner_name_dict,
+                                                                      risk_level_high,
+                                                                      runners_df, selection_df,
+                                                                      prediction_obj)
         if execute_bet:
             print(f"Bet to be placed on {prediction_obj.home}-{prediction_obj.away}, \
                   minute: {prediction_obj.minute}, prediction: {prediction_obj.prediction}, \
                   odd: {odd}, money: {size}\n")
-            betfair.update_bets_dict(trading, bets_dict, odd, risk_level_high, risk_level_medium, balance, max_exposure)
-
+            res = betfair.place_order(trading, odd, side, size, selection_id, market_id)
+            if res:
+                betfair.update_bets_dict(trading, bets_dict, odd, risk_level_high, balance, max_exposure)
 
 if __name__ == "__main__":
     # Create the shared queue and launch both threads
@@ -177,10 +185,9 @@ if __name__ == "__main__":
     # params
     minute_threshold = 20
     probability_threshold = 0.7
-    bets_dict = {'high': 1, 'medium': 2, 'low': 4}
-    risk_level_high = 1.6
-    risk_level_medium = 1.2
-    max_exposure = 14
+    bets_dict = {'high': 2, 'low': 8}
+    risk_level_high = 1.45
+    max_exposure = 100
     try:
         # remove previous files
         files = glob.glob(f"{file_path}/../dash/*")
@@ -189,7 +196,7 @@ if __name__ == "__main__":
         live_matches_thread = Thread(target=live_matches_producer, args=(q1, q2, minute_threshold, ))
         predictions_uo_thread = Thread(target=predictions_prod_cons_uo, args=(q1, q3, probability_threshold, ))
         predictions_ef_thread = Thread(target=predictions_prod_cons_ef, args=(q2, q3, probability_threshold, ))
-        # betfair_thread = Thread(target=betfair_consumer, args=(q3, max_exposure, bets_dict, risk_level_high, risk_level_medium, ))
+        # betfair_thread = Thread(target=betfair_consumer, args=(q3, max_exposure, bets_dict, risk_level_high, ))
         live_matches_thread.start()
         predictions_uo_thread.start()
         predictions_ef_thread.start()

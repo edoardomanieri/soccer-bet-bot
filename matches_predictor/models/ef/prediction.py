@@ -19,7 +19,10 @@ class Prediction():
         self.minute = predictions_df.loc[:, 'minute'][0]
         self.home = predictions_df.loc[:, 'home'][0]
         self.away = predictions_df.loc[:, 'away'][0]
-        self.market_name = 'da modificare'
+        self.home_score = predictions_df.loc[:, 'home_score'][0]
+        self.away_score = predictions_df.loc[:, 'away_score'][0]
+        self.market_name = 'Match Odds'
+        self.bet_type = 'ef'
         self.prediction = predictions_df.loc[:, 'prediction_final'][0]
         self.probability = predictions_df.loc[:, 'probability_final'][0]
         self.model_probability = predictions_df.loc[:, 'probability'][0]
