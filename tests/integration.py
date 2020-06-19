@@ -9,9 +9,10 @@ import time
 from queue import Queue
 from threading import Thread
 import signal
+import sqlite3
 
 
-def live_matches_producer(out_q1, out_q2, minute_threshold):
+def live_matches_producer(out_q1, out_q2, minute_threshold, conn, curs):
     n_api_call = 0
     label_dict = API_connect.get_label_dict()
     n_api_call += 1
@@ -37,15 +38,15 @@ def live_matches_producer(out_q1, out_q2, minute_threshold):
             df = pd.DataFrame([match])
             out_q1.put(df)
             out_q2.put(df)
-            # df_to_save = df.copy()
-            # API_connect.save(df_to_save)
+            df_to_save = df.copy()
+            API_connect.save(df_to_save, conn, curs)
         if len(matches_list) == 0:
             print("no matches available \n")
         print("pause..............\n")
         time.sleep(301)
 
 
-def predictions_prod_cons_uo(in_q, out_q, prob_threshold):
+def predictions_prod_cons_uo(in_q, out_q, prob_threshold, conn):
     file_path = os.path.dirname(os.path.abspath(__file__))
     cat_cols = ['home', 'away', 'campionato', 'date', 'id_partita']
     to_drop_cols = ['home', 'away', 'date', 'id_partita']
@@ -53,7 +54,7 @@ def predictions_prod_cons_uo(in_q, out_q, prob_threshold):
     api_missing_cols = ['home_punizioni', 'away_punizioni', 'home_rimesse_laterali', 'away_rimesse_laterali',
                         'home_contrasti', 'away_contrasti', 'home_attacchi', 'away_attacchi',
                         'home_attacchi_pericolosi', 'away_attacchi_pericolosi']
-    train_df = uo.train_set.Retrieving.starting_df(cat_cols, api_missing_cols)
+    train_df = uo.train_set.Retrieving.starting_df(cat_cols, api_missing_cols, conn)
     uo.train_set.Preprocessing.execute(train_df, cat_cols, api_missing_cols)
     train_df = pd.read_csv(f"{file_path}/../res/dataframes/training_uo.csv", header=0, index_col=0)
     # get clf from cross validation (dev) and retrain on all the train set
@@ -89,7 +90,7 @@ def predictions_prod_cons_uo(in_q, out_q, prob_threshold):
               eventual prediction: {prediction_obj.prediction}\n")
 
 
-def predictions_prod_cons_ef(in_q, out_q, prob_threshold):
+def predictions_prod_cons_ef(in_q, out_q, prob_threshold, conn):
     file_path = os.path.dirname(os.path.abspath(__file__))
     cat_cols = ['home', 'away', 'campionato', 'date', 'id_partita']
     to_drop_cols = ['home', 'away', 'date', 'id_partita']
@@ -98,7 +99,7 @@ def predictions_prod_cons_ef(in_q, out_q, prob_threshold):
                         'away_rimesse_laterali', 'home_contrasti', 'away_contrasti',
                         'home_attacchi', 'away_attacchi', 'home_attacchi_pericolosi',
                         'away_attacchi_pericolosi']
-    train_df = ef.train_set.Retrieving.starting_df(cat_cols, api_missing_cols)
+    train_df = ef.train_set.Retrieving.starting_df(cat_cols, api_missing_cols, conn)
     ef.train_set.Preprocessing.execute(train_df, cat_cols, api_missing_cols)
     train_df = pd.read_csv(f"{file_path}/../res/dataframes/training_ef.csv", header=0, index_col=0)
     # get clf from cross validation (dev) and retrain on all the train set
@@ -179,6 +180,8 @@ def main(in_q, max_exposure, bets_dict_init, risk_level_high):
 if __name__ == "__main__":
     # Create the shared queue and launch both threads
     file_path = os.path.dirname(os.path.abspath(__file__))
+    conn = sqlite3.connect(f"{file_path}/../../res/football.db")
+    curs = conn.cursor()
     q1 = Queue()
     q2 = Queue()
     q3 = Queue()
@@ -193,9 +196,9 @@ if __name__ == "__main__":
         files = glob.glob(f"{file_path}/../dash/*")
         for f in files:
             os.remove(f)
-        live_matches_thread = Thread(target=live_matches_producer, args=(q1, q2, minute_threshold, ))
-        predictions_uo_thread = Thread(target=predictions_prod_cons_uo, args=(q1, q3, probability_threshold, ))
-        predictions_ef_thread = Thread(target=predictions_prod_cons_ef, args=(q2, q3, probability_threshold, ))
+        live_matches_thread = Thread(target=live_matches_producer, args=(q1, q2, minute_threshold, conn, curs, ))
+        predictions_uo_thread = Thread(target=predictions_prod_cons_uo, args=(q1, q3, probability_threshold, conn ))
+        predictions_ef_thread = Thread(target=predictions_prod_cons_ef, args=(q2, q3, probability_threshold, conn ))
         # betfair_thread = Thread(target=betfair_consumer, args=(q3, max_exposure, bets_dict, risk_level_high, ))
         live_matches_thread.start()
         predictions_uo_thread.start()
@@ -204,4 +207,5 @@ if __name__ == "__main__":
         signal.pause()
     except KeyboardInterrupt:
         print('\n! Received keyboard interrupt, quitting threads.\n')
+        conn.close()
         # API_connect.ended_matches()

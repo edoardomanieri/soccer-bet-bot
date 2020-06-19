@@ -169,7 +169,7 @@ def get_match_statistics(fixture_id):
 
 def stat_to_dict(response, match_dict):
     resp_dict = json.loads(response)
-    if 'api' not in resp_dict.keys():
+    if 'api' not in resp_dict.keys() or 'statistics' not in resp_dict['api'].keys():
         return False
     stats = resp_dict['api']['statistics']
     if len(stats) == 0:
@@ -229,28 +229,17 @@ def stat_to_dict(response, match_dict):
     return True
 
 
-def save(df):
+def save(df, conn, curs):
     ''' save match for future training '''
-    file_path = os.path.dirname(os.path.abspath(__file__))
-    fixture_id = str(df.loc[:, 'fixture_id'][0])
-    with open(f"{file_path}/../res/fixture_ids", "r") as f:
-        fixture_ids = [line.replace("\n", "") for line in f.readlines()]
-    if fixture_id not in fixture_ids:
-        with open(f"{file_path}/../res/fixture_ids", "a") as f:
-            f.write(f"{fixture_id}\n")
-    df_before = pd.read_csv(f'{file_path}/../res/temp.csv', index_col=0)
     df['home_final_score'] = np.nan
     df['away_final_score'] = np.nan
-    df.drop(columns=['fixture_id'], inplace=True)
-    df_new = pd.concat([df_before, df])
-    df_new.to_csv(f'{file_path}/../res/temp.csv')
+    df.to_sql('match', conn, if_exists='append')
+    conn.commit()
 
 
-def ended_matches():
+def ended_matches(conn, curs):
     file_path = os.path.dirname(os.path.abspath(__file__))
-    df = pd.read_csv(f'{file_path}/../res/temp.csv', index_col=0)
-    with open(f"{file_path}/../res/fixture_ids", "r") as f:
-        fixture_ids = [line.replace("\n", "") for line in f.readlines()]
+    fixture_id_df = pd.read_sql_query("select fixture_id from match where home_final_score IS NULL;", conn)
     keys = json.load(open(f"{file_path}/../keys.js"))
     keys = random.choice(keys['apifootball'])
     headers = {
@@ -258,29 +247,16 @@ def ended_matches():
         'x-rapidapi-key': keys['x-rapidapi-key']
         }
     # fixture id of finished matches
-    finished = []
+    fixture_ids = fixture_id_df.loc[:, 'fixture_id'].values.tolist()
     for fixture_id in fixture_ids:
         url = f"http://{keys['x-rapidapi-host']}/{keys['version']}fixtures/id/{fixture_id}"
         response = requests.request("GET", url, headers=headers)
         resp_dict = json.loads(response)
         status = resp_dict['api']['status']  # double check
         if status == 'Match Finished':
-            df.loc[df['fixture_id'] == fixture_id, 'home_final_score'] = int(resp_dict['api']['goalsHomeTeam'])
-            df.loc[df['fixture_id'] == fixture_id, 'away_final_score'] = int(resp_dict['api']['goalsAwayTeam'])
-            # remove fixture id from list
-            finished.append(fixture_id)
-    # write not finished matches on the fixture id file and temp file
-    not_finished = [f for f in fixture_id if f not in fixture_ids]
-    with open(f"{file_path}/../res/fixture_ids", "w") as f:
-        for f_id in not_finished:
-            f.write(f"{f_id}\n")
-    df_temp_remaining = df.loc[df['fixture_id'].isin(not_finished), :]
-    df_temp_remaining.to_csv(f'{file_path}/../res/temp.csv')
-    # save file in res folder total df file
-    df_to_save = df.loc[~df['fixture_id'].isin(not_finished), :]
-    df_before = pd.read_csv(f"{file_path}/../res/df_api.csv", index_col=0)
-    df = pd.concat([df_before, df_to_save], axis=0, ignore_index=True)
-    df.to_csv(f"{file_path}/../res/df_api.csv")
+            values = (int(resp_dict['api']['goalsHomeTeam']), int(resp_dict['api']['goalsAwayTeam']), fixture_id)
+            curs.execute("update match set home_final_score=?, away_final_score=? where fixture_id=?", values)
+            conn.commit()
 
 
 def live_matches_producer(out_q, minute_threshold):

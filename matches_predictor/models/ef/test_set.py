@@ -7,10 +7,11 @@ import os
 class Retrieving(base.Retrieving):
 
     @staticmethod
-    def starting_df(cat_cols, api_missing_cols):
+    def starting_df(cat_cols, api_missing_cols, conn):
         file_path = os.path.dirname(os.path.abspath(__file__))
         # import dataset
-        df_API = pd.read_csv(f"{file_path}/../../../res/df_api.csv", index_col=0, header=0)
+        df_API = pd.read_sql_table("match", conn)
+        df_API = df_API.drop(columns=['fixture_id'])
         # put on the API df all nans (will be dropped later on)
         for col in api_missing_cols:
             df_API[col] = np.nan

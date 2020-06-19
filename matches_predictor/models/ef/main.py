@@ -1,5 +1,7 @@
 from matches_predictor.models.ef import test_set, validation, prediction
 from xgboost import XGBClassifier
+import sqlite3
+import os
 
 if __name__ == "__main__":
 
@@ -20,6 +22,9 @@ if __name__ == "__main__":
         total_mask = df['home_score'] >= 0
         return total_mask
 
+    file_path = os.path.dirname(os.path.abspath(__file__))
+    connection = sqlite3.connect(f"{file_path}/../../../res/football.db")
+
     cat_cols = ['home', 'away', 'campionato', 'date', 'id_partita']
     to_drop = ['home', 'away', 'date', 'id_partita']
     outcome_cols = ['home_final_score', 'away_final_score', 'final_ef']
@@ -38,7 +43,7 @@ if __name__ == "__main__":
     }
     prob_threshold = 0.7
     clf = XGBClassifier(**params)
-    df = test_set.Retrieving.starting_df(cat_cols, api_missing_cols)
+    df = test_set.Retrieving.starting_df(cat_cols, api_missing_cols, conn)
 
     do_mask_all = False
     if do_mask_all:
@@ -54,3 +59,5 @@ if __name__ == "__main__":
         outcome_cols, params, force_saving=False, cv=5, trials=10,
         threshold=prob_threshold)
     print(f"Best threshold {prob_threshold} accuracy 1 goal and 30-70 minute mask: {best_acc}")
+
+    connection.close()

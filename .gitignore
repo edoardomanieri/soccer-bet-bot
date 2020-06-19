@@ -13,6 +13,8 @@ res/temp.csv
 res/fixture_ids
 res/df_scraping.csv
 res/df_api.csv
+res/football.db
+dash/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
