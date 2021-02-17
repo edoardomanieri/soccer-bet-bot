@@ -6,15 +6,6 @@ import os
 
 class Prediction():
 
-    # def __init__(self, minute, home, away, market_name, prediction, probability, model_probability):
-    #     self.minute = minute
-    #     self.home = home
-    #     self.away = away
-    #     self.market_name = market_name
-    #     self.prediction = prediction
-    #     self.probability = probability if probability > 0.5 else 1 - probability
-    #     self.model_probability = model_probability if model_probability > 0.5 else 1 - model_probability
-
     def __init__(self, predictions_df):
         self.minute = predictions_df.loc[:, 'minute'][0]
         self.home = predictions_df.loc[:, 'home'][0]
@@ -103,46 +94,3 @@ def get_live_predictions(reprocess=False, retrain=False):
     predictions_df = prematch_odds_based(predictions_df,
                                          input_prematch_odds)
     return predictions_df
-
-
-def predictions_prod_cons(in_q, out_q, prob_threshold):
-    file_path = os.path.dirname(os.path.abspath(__file__))
-    cat_cols = ['home', 'away', 'campionato', 'date', 'id_partita']
-    to_drop_cols = ['home', 'away', 'date', 'id_partita']
-    outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
-    api_missing_cols = ['home_punizioni', 'away_punizioni', 'home_rimesse_laterali',
-                        'away_rimesse_laterali', 'home_contrasti', 'away_contrasti',
-                        'home_attacchi', 'away_attacchi','home_attacchi_pericolosi',
-                        'away_attacchi_pericolosi']
-    train_df = train_set.Retrieving.starting_df(cat_cols, api_missing_cols)
-    train_set.Preprocessing.execute(train_df, cat_cols, api_missing_cols)
-    train_df = pd.read_csv(f"{file_path}/../res/dataframes/training_uo.csv", header=0, index_col=0)
-    # get clf from cross validation (dev) and retrain on all the train set
-    clf = train_set.Modeling.get_dev_model()
-    cols_used = train_set.Modeling.train_model(train_df, clf, to_drop_cols, outcome_cols, prod=True)
-    clf = train_set.Modeling.get_prod_model()
-
-    while True:
-        input_df = pd.DataFrame(in_q.get())
-        input_df.drop(columns=['fixture_id'], inplace=True)
-        input_prematch_odds = input_stream.Preprocessing.execute(input_df,
-                                                                 train_df,
-                                                                 cat_cols)
-        test_X = input_df[cols_used]
-        get_predict_proba(clf, test_X, input_df)
-        predictions_df = prematch_odds_based(input_df, input_prematch_odds)
-        minute = predictions_df.loc[:, 'minute'][0]
-        home = predictions_df.loc[:, 'home'][0]
-        away = predictions_df.loc[:, 'away'][0]
-        market_name = 'Over/Under 2.5 Goals'
-        prediction = predictions_df.loc[:, 'prediction_final'][0]
-        probability = predictions_df.loc[:, 'probability_final_over'][0]
-        model_probability = predictions_df.loc[:, 'probability_over'][0]
-        prediction_obj = Prediction(minute, home, away, market_name, prediction, probability, model_probability)
-        if prediction_obj.probability > prob_threshold:
-            out_q.put(prediction_obj)
-        print(f"{prediction_obj.home}-{prediction_obj.away}, \
-              minute: {prediction_obj.minute}, \
-              probability: {prediction_obj.probability}, \
-              model_probability: {prediction_obj.model_probability}, \
-              eventual prediction: {prediction_obj.prediction}\n")
