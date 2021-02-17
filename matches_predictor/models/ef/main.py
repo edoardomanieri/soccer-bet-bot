@@ -23,7 +23,7 @@ if __name__ == "__main__":
         return total_mask
 
     file_path = os.path.dirname(os.path.abspath(__file__))
-    connection = sqlite3.connect(f"{file_path}/../../../res/football.db")
+    conn = sqlite3.connect(f"{file_path}/../../../res/football.db")
 
     cat_cols = ['home', 'away', 'campionato', 'date', 'id_partita']
     to_drop = ['home', 'away', 'date', 'id_partita']
