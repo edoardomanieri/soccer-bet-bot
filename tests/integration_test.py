@@ -27,10 +27,15 @@ def main():
     probability_threshold = 0.7
     try:
         live_matches_thread = Thread(target=mock_live_matches_producer, args=(q1, minute_threshold, ))
-        predictions_thread = Thread(target=prediction_thread.run, args=(q1,  probability_threshold, ))
+        predictions_thread = Thread(target=prediction_thread.run, args=(q1, probability_threshold, ))
         _start_threads([live_matches_thread, predictions_thread])
     except KeyboardInterrupt:
         print('\n! Received keyboard interrupt, quitting threads.\n')
+
+
+def test_main():
+    pass
+    
 
 if __name__ == "__main__":
     main()

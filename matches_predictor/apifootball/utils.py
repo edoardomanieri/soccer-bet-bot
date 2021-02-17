@@ -6,24 +6,6 @@ import time
 import random
 import os
 
-'''date', 'id_partita', 'minute', 'home', 'away', 'campionato',
-       'home_score', 'away_score', 'home_possesso_palla',
-       'away_possesso_palla', 'home_tiri', 'away_tiri', 'home_tiri_in_porta',
-       'away_tiri_in_porta', 'home_tiri_fuori', 'away_tiri_fuori',
-       'home_tiri_fermati', 'away_tiri_fermati', 'home_punizioni',
-       'away_punizioni', 'home_calci_d_angolo', 'away_calci_d_angolo',
-       'home_fuorigioco', 'away_fuorigioco', 'home_rimesse_laterali',
-       'away_rimesse_laterali', 'home_parate', 'away_parate', 'home_falli',
-       'away_falli', 'home_cartellini_rossi', 'away_cartellini_rossi',
-       'home_cartellini_gialli', 'away_cartellini_gialli',
-       'home_passaggi_totali', 'away_passaggi_totali',
-       'home_passaggi_completati', 'away_passaggi_completati',
-       'home_contrasti', 'away_contrasti', 'home_attacchi', 'away_attacchi',
-       'home_attacchi_pericolosi', 'away_attacchi_pericolosi', 'odd_1',
-       'odd_X', 'odd_2', 'odd_over', 'odd_under', 'live_odd_1', 'live_odd_X',
-       'live_odd_2', 'live_odd_over', 'live_odd_under', 'home_final_score',
-       'away_final_score'''
-
 
 def extract_values(obj, key):
     """Pull all values of specified key from nested JSON."""
@@ -259,29 +241,3 @@ def ended_matches(conn, curs):
             conn.commit()
 
 
-def live_matches_producer(out_q, minute_threshold):
-    label_dict = get_label_dict()
-    n_api_call = 1
-    while True:
-        matches_list = get_basic_info()
-        n_api_call += 1
-        for match in matches_list:
-            if match['minute'] < minute_threshold:
-                continue
-            if match['home_score'] + match['away_score'] > 2:
-                continue
-            print(f"match: {match['home']}-{match['away']}\n")
-            resp = get_match_statistics(match['fixture_id'])
-            stat_present = stat_to_dict(resp, match)
-            if not stat_present:
-                print("no statistics available")
-                continue
-            resp = get_prematch_odds(match['fixture_id'], label_dict['Goals Over/Under'])
-            prematch_odds_uo_to_dict(resp, match)
-            resp = get_prematch_odds(match['fixture_id'], label_dict['Match Winner'])
-            prematch_odds_1x2_to_dict(resp, match)
-            n_api_call += 3
-            df = pd.DataFrame([match])
-            out_q.put(df)
-        print("pause..............\n")
-        time.sleep(301)

@@ -17,6 +17,13 @@ class Prediction():
         self.probability = predictions_df.loc[:, 'probability_final'][0]
         self.model_probability = predictions_df.loc[:, 'probability'][0]
 
+    def __str__(self):
+        return f"{self.home}-{self.away}, \
+              minute: {self.minute}, \
+              probability: {self.probability}, \
+              model_probability: {self.model_probability}, \
+              eventual prediction: {self.prediction}\n"
+
 
 def build_output_df(input_df):
     final_df = input_df.loc[:, ['id_partita', 'home', 'away', 'minute', 'home_score',
