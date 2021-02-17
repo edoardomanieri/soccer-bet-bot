@@ -60,4 +60,4 @@ if __name__ == "__main__":
         threshold=prob_threshold)
     print(f"Best threshold {prob_threshold} accuracy 1 goal and 30-70 minute mask: {best_acc}")
 
-    connection.close()
+    conn.close()
