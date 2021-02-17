@@ -5,7 +5,7 @@ discard
 matches_predictor/model/result_utils.py
 matches_predictor/model/result.py
 matches_predictor/model/pipeline.py
-keys.js
+keys.json
 certs/
 res/summary_plot_shap.png
 res/summary_plot_shap_bar.png

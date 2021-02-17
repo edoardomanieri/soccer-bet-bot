@@ -2,7 +2,7 @@ from queue import Queue
 from threading import Thread
 import signal
 from matches_predictor.API_connect import live_matches_producer, ended_matches
-from matches_predictor.prediction import predictions_consumer
+from matches_predictor.models.ef.prediction import predictions_prod_cons
 from matches_predictor.betfair import main
 
 
@@ -19,7 +19,7 @@ if __name__ == "__main__":
     max_exposure = 12
     try:
         live_matches_thread = Thread(target=live_matches_producer, args=(q1, minute_threshold, ))
-        predictions_thread = Thread(target=predictions_consumer, args=(q1, q2, probability_threshold, ))
+        predictions_thread = Thread(target=predictions_prod_cons, args=(q1, q2, probability_threshold, ))
         betfair_thread = Thread(target=main, args=(q2, max_exposure, bets_dict, risk_level_high, risk_level_medium, ))
         live_matches_thread.start()
         predictions_thread.start()

@@ -48,7 +48,7 @@ def extract_values(obj, key):
 
 def get_basic_info():
     file_path = os.path.dirname(os.path.abspath(__file__))
-    keys = json.load(open(f"{file_path}/../keys.js"))
+    keys = json.load(open(f"{file_path}/../keys.json"))
     keys = random.choice(keys['apifootball'])
     url = f"http://{keys['x-rapidapi-host']}/{keys['version']}fixtures/live"
     headers = {
@@ -81,7 +81,7 @@ def basic_info_to_dict(response):
 
 def get_label_dict():
     file_path = os.path.dirname(os.path.abspath(__file__))
-    keys = json.load(open(f"{file_path}/../keys.js"))
+    keys = json.load(open(f"{file_path}/../keys.json"))
     keys = random.choice(keys['apifootball'])
     url = f"http://{keys['x-rapidapi-host']}/{keys['version']}odds/labels/"
     headers = {
@@ -99,7 +99,7 @@ def get_label_dict():
 
 def get_prematch_odds(fixture_id, label_id):
     file_path = os.path.dirname(os.path.abspath(__file__))
-    keys = json.load(open(f"{file_path}/../keys.js"))
+    keys = json.load(open(f"{file_path}/../keys.json"))
     keys = random.choice(keys['apifootball'])
     url = f"http://{keys['x-rapidapi-host']}/{keys['version']}odds/fixture/{fixture_id}/label/{label_id}"
     headers = {
@@ -156,7 +156,7 @@ def prematch_odds_1x2_to_dict(response, match_dict):
 
 def get_match_statistics(fixture_id):
     file_path = os.path.dirname(os.path.abspath(__file__))
-    keys = json.load(open(f"{file_path}/../keys.js"))
+    keys = json.load(open(f"{file_path}/../keys.json"))
     keys = random.choice(keys['apifootball'])
     url = f"http://{keys['x-rapidapi-host']}/{keys['version']}statistics/fixture/{fixture_id}"
     headers = {
@@ -240,7 +240,7 @@ def save(df, conn, curs):
 def ended_matches(conn, curs):
     file_path = os.path.dirname(os.path.abspath(__file__))
     fixture_id_df = pd.read_sql_query("select fixture_id from match where home_final_score IS NULL;", conn)
-    keys = json.load(open(f"{file_path}/../keys.js"))
+    keys = json.load(open(f"{file_path}/../keys.json"))
     keys = random.choice(keys['apifootball'])
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],

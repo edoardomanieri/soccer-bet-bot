@@ -12,7 +12,7 @@ def login():
     certs_path = f"{file_path}/../certs"
 
     # create trading instance
-    keys = json.load(open(f"{file_path}/../keys.js"))
+    keys = json.load(open(f"{file_path}/../keys.json"))
     trading = betfairlightweight.APIClient(username=keys['betfair-username'],
                                            password=keys['betfair-password'],
                                            app_key=keys['betfair-key-delay'],
