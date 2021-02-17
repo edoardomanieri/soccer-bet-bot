@@ -6,22 +6,12 @@ import os
 
 class Prediction():
 
-    # def __init__(self, minute, home, away, market_name, prediction, probability, model_probability):
-    #     self.minute = minute
-    #     self.home = home
-    #     self.away = away
-    #     self.market_name = market_name
-    #     self.prediction = prediction
-    #     self.probability = probability
-    #     self.model_probability = model_probability
-
     def __init__(self, predictions_df):
         self.minute = predictions_df.loc[:, 'minute'][0]
         self.home = predictions_df.loc[:, 'home'][0]
         self.away = predictions_df.loc[:, 'away'][0]
         self.home_score = predictions_df.loc[:, 'home_score'][0]
         self.away_score = predictions_df.loc[:, 'away_score'][0]
-        self.market_name = 'Match Odds'
         self.bet_type = 'ef'
         self.prediction = predictions_df.loc[:, 'prediction_final'][0]
         self.probability = predictions_df.loc[:, 'probability_final'][0]
@@ -126,17 +116,13 @@ def predictions_prod_cons(in_q, out_q, prob_threshold):
     file_path = os.path.dirname(os.path.abspath(__file__))
     cat_cols = ['home', 'away', 'campionato', 'date', 'id_partita']
     to_drop_cols = ['home', 'away', 'date', 'id_partita']
-    outcome_cols = ['home_final_score', 'away_final_score', 'final_uo']
+    outcome_cols = ['home_final_score', 'away_final_score']
     api_missing_cols = ['home_punizioni', 'away_punizioni', 'home_rimesse_laterali',
                         'away_rimesse_laterali', 'home_contrasti', 'away_contrasti',
                         'home_attacchi', 'away_attacchi','home_attacchi_pericolosi',
                         'away_attacchi_pericolosi']
-    train_df = train_set.Retrieving.starting_df(cat_cols, api_missing_cols)
-    train_set.Preprocessing.execute(train_df, cat_cols, api_missing_cols)
-    train_df = pd.read_csv(f"{file_path}/../res/dataframes/training_ef.csv", header=0, index_col=0)
-    # get clf from cross validation (dev) and retrain on all the train set
-    clf = train_set.Modeling.get_dev_model()
-    cols_used = train_set.Modeling.train_model(train_df, clf, to_drop_cols, outcome_cols, prod=True)
+    train_df = pd.read_csv(f"{file_path}/../../../res/dataframes/training_ef.csv", header=0, index_col=0)
+    cols_used = [col for col in train_df.columns if col not in to_drop_cols + outcome_cols]
     clf = train_set.Modeling.get_prod_model()
 
     while True:
