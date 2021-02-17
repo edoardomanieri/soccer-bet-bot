@@ -21,7 +21,7 @@ def _start_threads(threads):
     signal.pause()
 
 
-def test_main():
+def main():
     q1 = Queue()
     minute_threshold = 30
     probability_threshold = 0.7
@@ -33,4 +33,4 @@ def test_main():
         print('\n! Received keyboard interrupt, quitting threads.\n')
 
 if __name__ == "__main__":
-    test_main()
+    main()
