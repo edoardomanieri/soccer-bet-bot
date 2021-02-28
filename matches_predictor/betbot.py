@@ -13,7 +13,7 @@ def start_threads(threads):
 def main():
     queue = Queue()
     minute_threshold = 30
-    probability_threshold = 0.01
+    probability_threshold = 0.7
     try:
         live_matches_thread = Thread(target=apifootball_thread.run, args=(queue, minute_threshold, ))
         predictions_thread = Thread(target=prediction_thread.run, args=(queue,  probability_threshold, ))

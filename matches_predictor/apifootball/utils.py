@@ -30,8 +30,7 @@ def extract_values(obj, key):
 
 def get_basic_info():
     file_path = os.path.dirname(os.path.abspath(__file__))
-    keys = json.load(open(f"{file_path}/../keys.json"))
-    keys = random.choice(keys['apifootball'])
+    keys = json.load(open(f"{file_path}/../../keys.json"))
     url = f"http://{keys['x-rapidapi-host']}/{keys['version']}fixtures/live"
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
@@ -63,8 +62,7 @@ def basic_info_to_dict(response):
 
 def get_label_dict():
     file_path = os.path.dirname(os.path.abspath(__file__))
-    keys = json.load(open(f"{file_path}/../keys.json"))
-    keys = random.choice(keys['apifootball'])
+    keys = json.load(open(f"{file_path}/../../keys.json"))
     url = f"http://{keys['x-rapidapi-host']}/{keys['version']}odds/labels/"
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
@@ -81,8 +79,7 @@ def get_label_dict():
 
 def get_prematch_odds(fixture_id, label_id):
     file_path = os.path.dirname(os.path.abspath(__file__))
-    keys = json.load(open(f"{file_path}/../keys.json"))
-    keys = random.choice(keys['apifootball'])
+    keys = json.load(open(f"{file_path}/../../keys.json"))
     url = f"http://{keys['x-rapidapi-host']}/{keys['version']}odds/fixture/{fixture_id}/label/{label_id}"
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
@@ -138,8 +135,7 @@ def prematch_odds_1x2_to_dict(response, match_dict):
 
 def get_match_statistics(fixture_id):
     file_path = os.path.dirname(os.path.abspath(__file__))
-    keys = json.load(open(f"{file_path}/../keys.json"))
-    keys = random.choice(keys['apifootball'])
+    keys = json.load(open(f"{file_path}/../../keys.json"))
     url = f"http://{keys['x-rapidapi-host']}/{keys['version']}statistics/fixture/{fixture_id}"
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
@@ -222,8 +218,7 @@ def save(df, conn, curs):
 def ended_matches(conn, curs):
     file_path = os.path.dirname(os.path.abspath(__file__))
     fixture_id_df = pd.read_sql_query("select fixture_id from match where home_final_score IS NULL;", conn)
-    keys = json.load(open(f"{file_path}/../keys.json"))
-    keys = random.choice(keys['apifootball'])
+    keys = json.load(open(f"{file_path}/../../keys.json"))
     headers = {
         'x-rapidapi-host': keys['x-rapidapi-host'],
         'x-rapidapi-key': keys['x-rapidapi-key']
